@@ -26,14 +26,13 @@ data:
 
         delete_old_custom_formats: true
         replace_existing_custom_formats: true
+        quality_definition:
+          type: series
 
         quality_profiles:
           - name: WEB-1080p
-
-        include:
-          - template: sonarr-quality-definition-series
-          - template: sonarr-v4-quality-profile-web-1080p
-          - template: sonarr-v4-custom-formats-web-1080p
+            trash_ids:
+              - 72dae194fc92bf828f32cde7744e51a1
 
         custom_formats:
           - trash_ids:
@@ -56,15 +55,12 @@ data:
 
         quality_profiles:
           - name: SQP-1 (2160p)
+            trash_ids:
+              - 5128baeb2b081b72126bc8482b2a86a0
 
-        # Recyclarr 8.x: quality definition uses dedicated field, and
-        # profile/custom-format templates are v4-prefixed.
+        # Recyclarr 8.x uses guide-backed quality profiles via trash_ids.
         quality_definition:
           type: sqp-streaming
-
-        include:
-          - template: radarr-v4-quality-profile-sqp-1-2160p-default
-          - template: radarr-v4-custom-formats-sqp-1-2160p
 
         custom_formats:
           - trash_ids:
