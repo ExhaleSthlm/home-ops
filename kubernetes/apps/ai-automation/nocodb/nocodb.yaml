@@ -127,7 +127,7 @@ spec:
 
     image:
       repository: nocodb/nocodb
-      tag: 0.301.3@sha256:c3d38b5563234d287710519ff7507d43dfa553241bc70b955f91d90698065340
+      tag: 0.301.4@sha256:4a836d4eecd186e6e1857dd847700fdc1da7989f485708c9034f9bb9fa499cac
       pullPolicy: IfNotPresent
 
     extraEnvs:
