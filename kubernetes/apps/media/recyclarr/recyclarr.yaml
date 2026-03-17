@@ -25,14 +25,12 @@ data:
         api_key: !env_var SONARR__AUTH__APIKEY
 
         delete_old_custom_formats: true
-        replace_existing_custom_formats: true
         quality_definition:
           type: series
 
         quality_profiles:
           - name: WEB-1080p
-            trash_ids:
-              - 72dae194fc92bf828f32cde7744e51a1
+            trash_id: 72dae194fc92bf828f32cde7744e51a1
 
         custom_formats:
           - trash_ids:
@@ -51,12 +49,9 @@ data:
         api_key: !env_var RADARR__AUTH__APIKEY
 
         delete_old_custom_formats: true
-        replace_existing_custom_formats: true
-
         quality_profiles:
           - name: SQP-1 (2160p)
-            trash_ids:
-              - 5128baeb2b081b72126bc8482b2a86a0
+            trash_id: 5128baeb2b081b72126bc8482b2a86a0
 
         # Recyclarr 8.x uses guide-backed quality profiles via trash_ids.
         quality_definition:
