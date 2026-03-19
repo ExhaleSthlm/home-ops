@@ -722,7 +722,7 @@ spec:
           app:
             image:
               repository: docker.io/poweradmin/poweradmin
-              tag: "4.1.1@sha256:ac295e0cea62cce295724bda723f7dc60a13e6b0d59bc236ba0877328627b6f7"
+              tag: "4.2.0@sha256:79e37e1d49dd99197b77a4ca73f925944d8fbec26ade8fb08f42ce37cc2d0469"
             env:
               - name: TZ
                 value: ${TZ}
