@@ -128,7 +128,7 @@ spec:
           main:
             image:
               repository: nocodb/nocodb
-              tag: 0.301.4
+              tag: 0.301.5
               pullPolicy: IfNotPresent
             envFrom:
               - secretRef:
