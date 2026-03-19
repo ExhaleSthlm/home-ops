@@ -1,15 +1,13 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/source.toolkit.fluxcd.io/gitrepository_v1.json
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/source.toolkit.fluxcd.io/helmrepository_v1.json
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: GitRepository
+kind: HelmRepository
 metadata:
-  name: nocodb
+  name: zekker6
   namespace: cozy-fluxcd
 spec:
   interval: 1h
-  ref:
-    commit: f9e5bdf4f4ef89a5371ea1a59796fedd33d21121
-  url: https://github.com/nocodb/nocodb.git
+  url: https://zekker6.github.io/helm-charts
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/external-secrets.io/externalsecret_v1.json
 apiVersion: external-secrets.io/v1
@@ -104,10 +102,11 @@ spec:
   interval: 1h
   chart:
     spec:
-      chart: charts/nocodb
+      chart: nocodb
+      version: 1.9.0
       sourceRef:
-        kind: GitRepository
-        name: nocodb
+        kind: HelmRepository
+        name: zekker6
         namespace: cozy-fluxcd
       interval: 10m
   install:
@@ -120,77 +119,82 @@ spec:
   driftDetection:
     mode: enabled
   values:
-    replicaCount: 1
-
-    podAnnotations:
-      reloader.stakater.com/auto: "true"
-
-    image:
-      repository: nocodb/nocodb
-      tag: 0.301.5@sha256:d9516f0bf546fd6c78a382ab0657626c683fca7aaafdbbe53c66baf15df7fc0d
-      pullPolicy: IfNotPresent
-
-    extraEnvs:
-      NC_PUBLIC_URL: https://nocodb.${DOMAIN}
-      TZ: ${TZ}
-
-    extraSecretEnvs: null
-
+    controllers:
+      main:
+        replicas: 1
+        podAnnotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image:
+              repository: nocodb/nocodb
+              tag: 0.301.4
+              pullPolicy: IfNotPresent
+            envFrom:
+              - secretRef:
+                  name: nocodb
+            env:
+              NC_PUBLIC_URL: https://nocodb.${DOMAIN}
+              TZ: ${TZ}
+            resources:
+              requests:
+                cpu: 200m
+                memory: 512Mi
+              limits:
+                memory: 1Gi
+            securityContext:
+              runAsNonRoot: true
+              allowPrivilegeEscalation: false
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
     service:
-      type: ClusterIP
-      annotations:
-        external-dns.alpha.kubernetes.io/internal: "true"
-        external-dns.alpha.kubernetes.io/hostname: "nocodb.${DOMAIN}"
-        external-dns.alpha.kubernetes.io/target: "cluster-ingress.${DOMAIN}"
-      port: 8080
-
+      main:
+        annotations:
+          external-dns.alpha.kubernetes.io/internal: "true"
+          external-dns.alpha.kubernetes.io/hostname: "nocodb.${DOMAIN}"
+          external-dns.alpha.kubernetes.io/target: "cluster-ingress.${DOMAIN}"
+        ports:
+          http:
+            port: 8080
     ingress:
-      enabled: true
-      className: tenant-root
-      port: 8080
-      annotations:
-        external-dns.alpha.kubernetes.io/target: ${CLOUDFLARE_TUNNEL_TARGET}
-        external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
-        external-dns.alpha.kubernetes.io/hostname: "nocodb.${DOMAIN}"
-        nginx.ingress.kubernetes.io/auth-url: "https://auth.${DOMAIN}/outpost.goauthentik.io/auth/nginx"
-        nginx.ingress.kubernetes.io/auth-signin: "https://auth.${DOMAIN}/outpost.goauthentik.io/start?rd=$scheme://$http_host$escaped_request_uri"
-        nginx.ingress.kubernetes.io/auth-response-headers: "Set-Cookie,X-authentik-username,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-groups,X-authentik-jwt,X-authentik-meta"
-        nginx.ingress.kubernetes.io/auth-snippet: |
-          proxy_set_header Host $host;
-          proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
-          proxy_set_header X-Original-URI $request_uri;
-          proxy_set_header X-Original-Host $http_host;
-          proxy_set_header X-Forwarded-Host $http_host;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Uri $request_uri;
-          proxy_set_header X-Original-Method $request_method;
-      hosts:
-        - host: nocodb.${DOMAIN}
-          paths:
-            - path: /
-              pathType: Prefix
-      tls:
-        - secretName: wildcard-le-tls-cert
-          hosts:
-            - nocodb.${DOMAIN}
-
-    storage:
+      main:
+        enabled: true
+        className: tenant-root
+        annotations:
+          external-dns.alpha.kubernetes.io/target: ${CLOUDFLARE_TUNNEL_TARGET}
+          external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+          external-dns.alpha.kubernetes.io/hostname: "nocodb.${DOMAIN}"
+          nginx.ingress.kubernetes.io/auth-url: "https://auth.${DOMAIN}/outpost.goauthentik.io/auth/nginx"
+          nginx.ingress.kubernetes.io/auth-signin: "https://auth.${DOMAIN}/outpost.goauthentik.io/start?rd=$scheme://$http_host$escaped_request_uri"
+          nginx.ingress.kubernetes.io/auth-response-headers: "Set-Cookie,X-authentik-username,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-groups,X-authentik-jwt,X-authentik-meta"
+          nginx.ingress.kubernetes.io/auth-snippet: |
+            proxy_set_header Host $host;
+            proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+            proxy_set_header X-Original-URI $request_uri;
+            proxy_set_header X-Original-Host $http_host;
+            proxy_set_header X-Forwarded-Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Uri $request_uri;
+            proxy_set_header X-Original-Method $request_method;
+        hosts:
+          - host: nocodb.${DOMAIN}
+            paths:
+              - path: /
+                pathType: Prefix
+                service:
+                  identifier: main
+                  port: http
+        tls:
+          - secretName: wildcard-le-tls-cert
+            hosts:
+              - nocodb.${DOMAIN}
+    persistence:
+      data:
+        enabled: false
+    postgresql:
       enabled: false
-
-    resources:
-      requests:
-        cpu: 200m
-        memory: 512Mi
-      limits:
-        memory: 1Gi
-
-    podSecurityContext:
-      runAsNonRoot: true
-      runAsUser: 1000
-      runAsGroup: 1000
-      fsGroup: 1000
-      fsGroupChangePolicy: OnRootMismatch
-
-    securityContext:
-      runAsNonRoot: true
-      allowPrivilegeEscalation: false
