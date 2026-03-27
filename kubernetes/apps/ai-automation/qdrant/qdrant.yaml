@@ -39,7 +39,7 @@ spec:
 
     image:
       repository: qdrant/qdrant
-      tag: v1.17.0
+      tag: v1.17.1
       digest: sha256:0fb8897412abc81d1c0430a899b9a81eb8328aa634e7242d1bc804c1fe8fe863
       pullPolicy: IfNotPresent
       useUnprivilegedImage: false
