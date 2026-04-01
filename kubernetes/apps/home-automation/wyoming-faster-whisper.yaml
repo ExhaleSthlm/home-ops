@@ -1,0 +1,104 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wyoming-faster-whisper-data
+  namespace: home-automation
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: local
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: wyoming-faster-whisper
+  namespace: home-automation
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+    namespace: cozy-fluxcd
+  values:
+    controllers:
+      wyoming-faster-whisper:
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: rhasspy/wyoming-whisper
+              tag: 2.5.0
+            args:
+              - --model
+              - KBLab/kb-whisper-small
+              - --language
+              - sv
+              - --uri
+              - tcp://0.0.0.0:10300
+              - --data-dir
+              - /data
+              - --download-dir
+              - /data
+            env:
+              TZ: ${TZ}
+              HF_HUB_DISABLE_TELEMETRY: "1"
+            probes:
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 10300
+                  initialDelaySeconds: 10
+                  periodSeconds: 5
+                  failureThreshold: 60
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 10300
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 2
+                  failureThreshold: 6
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 10300
+                  initialDelaySeconds: 5
+                  periodSeconds: 5
+                  timeoutSeconds: 2
+                  failureThreshold: 12
+            resources:
+              requests:
+                cpu: 500m
+                memory: 2Gi
+              limits:
+                cpu: 4
+                memory: 8Gi
+    service:
+      app:
+        controller: wyoming-faster-whisper
+        type: LoadBalancer
+        annotations:
+          metallb.io/address-pool: cozystack
+        loadBalancerIP: 192.168.222.122
+        externalTrafficPolicy: Local
+        ports:
+          wyoming:
+            port: 10300
+            protocol: TCP
+            targetPort: 10300
+    persistence:
+      data:
+        enabled: true
+        existingClaim: wyoming-faster-whisper-data
+        globalMounts:
+          - path: /data
