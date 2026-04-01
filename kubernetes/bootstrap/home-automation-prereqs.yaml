@@ -99,3 +99,22 @@ spec:
       ports:
         - protocol: TCP
           port: 10300
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-wyoming-piper-external-ingress
+  namespace: home-automation
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: wyoming-piper
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 10200
