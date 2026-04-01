@@ -32,6 +32,11 @@ spec:
             image:
               repository: curlimages/curl
               tag: 8.16.0
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
             command:
               - sh
               - -ec
