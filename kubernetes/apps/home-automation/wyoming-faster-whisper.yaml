@@ -37,6 +37,8 @@ spec:
               - KBLab/kb-whisper-small
               - --language
               - sv
+              - --compute-type
+              - int8_float32
               - --uri
               - tcp://0.0.0.0:10300
               - --data-dir
