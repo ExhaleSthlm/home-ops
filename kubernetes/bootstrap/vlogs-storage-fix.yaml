@@ -5,6 +5,7 @@ metadata:
   name: generic
   namespace: tenant-root
 spec:
+  retentionPeriod: 7d
   storage:
     resources:
       requests:
