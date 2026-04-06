@@ -11,6 +11,15 @@
       ignoreTests: false,
     },
     {
+      description: "Auto-merge pinned container images except majors",
+      matchDatasources: ["docker"],
+      matchCurrentValue: ["/@sha256:[a-f0-9]{64}$/"],
+      automerge: true,
+      automergeType: "pr",
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      ignoreTests: false,
+    },
+    {
       description: "Auto-merge OCI Charts",
       matchDatasources: ["docker"],
       automerge: true,
