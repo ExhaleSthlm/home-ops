@@ -37,25 +37,31 @@ spec:
     ollama:
       enabled: false
       ollamaUrls:
-        - http://ollama.ai-automation.svc.cluster.local:11434
+        - http://ollama.ai-automation.svc.cozy.local:11434
     pipelines:
       enabled: false
     tika:
       enabled: false
     redis:
       enabled: true
+    websocket:
+      enabled: true
+      manager: redis
+      url: redis://open-webui-redis.ai-automation.svc.cozy.local:6379/1
 
     replicaCount: 1
+
+    commonEnvVars:
+      - name: REDIS_URL
+        value: redis://open-webui-redis.ai-automation.svc.cozy.local:6379/0
+      - name: WEBSOCKET_REDIS_URL
+        value: redis://open-webui-redis.ai-automation.svc.cozy.local:6379/1
+      - name: CORS_ALLOW_ORIGIN
+        value: https://owui.${DOMAIN}
 
     image:
       repository: ghcr.io/open-webui/open-webui
       pullPolicy: IfNotPresent
-
-    extraEnvVars:
-      - name: REDIS_URL
-        value: redis://open-webui-redis.ai-automation.svc.cozy.local:6379/0
-      - name: WEBSOCKET_REDIS_URL
-        value: redis://open-webui-redis.ai-automation.svc.cozy.local:6379/0
 
     persistence:
       enabled: true
