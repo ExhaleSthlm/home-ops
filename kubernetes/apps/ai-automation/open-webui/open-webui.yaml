@@ -52,6 +52,8 @@ spec:
     replicaCount: 1
 
     commonEnvVars:
+      - name: ENABLE_OLLAMA_API
+        value: "True"
       - name: CORS_ALLOW_ORIGIN
         value: https://owui.${DOMAIN}
 
