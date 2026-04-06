@@ -91,11 +91,11 @@ spec:
                 containerPort: 11434
             resources:
               requests:
-                cpu: 500m
-                memory: 2Gi
+                cpu: "1"
+                memory: 5Gi
               limits:
                 cpu: "4"
-                memory: 8Gi
+                memory: 16Gi
 
     service:
       ollama:
