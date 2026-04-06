@@ -44,6 +44,29 @@ data:
     #       model: openrouter/openai/gpt-5-mini
     #       api_key: os.environ/OPENROUTER_API_KEY
 ---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: es-litellm-openclaw-auth
+  namespace: ai-automation
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: infisical
+  target:
+    name: litellm-openclaw-auth
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      metadata:
+        labels:
+          reloader.stakater.com/auto: "true"
+  data:
+    - secretKey: LITELLM_MASTER_KEY
+      remoteRef:
+        key: /AI_AUTOMATION/OPENCLAW_OPENAI_API_KEY
+---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -90,6 +113,9 @@ spec:
             env:
               - name: TZ
                 value: ${TZ}
+            envFrom:
+              - secretRef:
+                  name: litellm-openclaw-auth
             ports:
               - name: http
                 containerPort: 4000

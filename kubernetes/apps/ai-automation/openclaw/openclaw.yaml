@@ -1,0 +1,239 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openclaw-data
+  namespace: ai-automation
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openclaw-config
+  namespace: ai-automation
+data:
+  openclaw.json: |
+    {
+      "gateway": {
+        "mode": "local",
+        "port": 18789,
+        "bind": "lan",
+        "auth": {
+          "mode": "token",
+          "token": "${OPENCLAW_GATEWAY_TOKEN}"
+        },
+        "controlUi": {
+          "enabled": true,
+          "allowedOrigins": ["https://oc.${DOMAIN}"]
+        }
+      },
+      "agents": {
+        "defaults": {
+          "model": {
+            "primary": "litellm/ollama-default"
+          }
+        }
+      },
+      "models": {
+        "mode": "merge",
+        "providers": {
+          "litellm": {
+            "name": "LiteLLM",
+            "baseUrl": "http://litellm.ai-automation.svc.cozy.local:4000/v1",
+            "api": "openai-completions",
+            "apiKey": "${LITELLM_API_KEY}",
+            "models": [
+              {
+                "id": "ollama-default",
+                "name": "Ollama Default",
+                "reasoning": false,
+                "input": ["text"],
+                "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+                "contextWindow": 32768,
+                "maxTokens": 8192
+              },
+              {
+                "id": "ollama-fast",
+                "name": "Ollama Fast",
+                "reasoning": false,
+                "input": ["text"],
+                "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+                "contextWindow": 32768,
+                "maxTokens": 8192
+              }
+            ]
+          }
+        }
+      }
+    }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: es-openclaw-env
+  namespace: ai-automation
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: infisical
+  target:
+    name: openclaw-env
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      metadata:
+        labels:
+          reloader.stakater.com/auto: "true"
+  data:
+    - secretKey: OPENCLAW_GATEWAY_TOKEN
+      remoteRef:
+        key: /AI_AUTOMATION/OPENCLAW_GATEWAY_TOKEN
+    - secretKey: LITELLM_API_KEY
+      remoteRef:
+        key: /AI_AUTOMATION/OPENCLAW_OPENAI_API_KEY
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: openclaw
+  namespace: ai-automation
+  annotations:
+    lineage.cozystack.io/ignore: "true"
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+    namespace: cozy-fluxcd
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      openclaw:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/openclaw/openclaw
+              tag: 2026.4.5@sha256:f38ff3d987e6c3e2d77bbb379de575f280d16037fd6a7ec334a35d48e480fd54
+              pullPolicy: IfNotPresent
+            command:
+              - node
+              - dist/index.js
+              - gateway
+              - --bind
+              - lan
+              - --port
+              - "18789"
+            env:
+              - name: HOME
+                value: /home/node
+              - name: TERM
+                value: xterm-256color
+              - name: TZ
+                value: ${TZ}
+            envFrom:
+              - secretRef:
+                  name: openclaw-env
+            ports:
+              - name: http
+                containerPort: 18789
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: http
+                  initialDelaySeconds: 20
+                  periodSeconds: 20
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness: *probes
+            resources:
+              requests:
+                cpu: 500m
+                memory: 1Gi
+              limits:
+                cpu: "2"
+                memory: 4Gi
+
+    service:
+      openclaw:
+        controller: openclaw
+        annotations:
+          external-dns.alpha.kubernetes.io/internal: "true"
+          external-dns.alpha.kubernetes.io/hostname: "openclaw.${DOMAIN}"
+          external-dns.alpha.kubernetes.io/target: "cluster-ingress.${DOMAIN}"
+        ports:
+          http:
+            port: 18789
+            targetPort: http
+
+    ingress:
+      openclaw:
+        enabled: true
+        className: tenant-root
+        annotations:
+          lineage.cozystack.io/ignore: "true"
+          external-dns.alpha.kubernetes.io/target: ${CLOUDFLARE_TUNNEL_TARGET}
+          external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+          external-dns.alpha.kubernetes.io/hostname: "oc.${DOMAIN}"
+          nginx.ingress.kubernetes.io/auth-url: "https://auth.${DOMAIN}/outpost.goauthentik.io/auth/nginx"
+          nginx.ingress.kubernetes.io/auth-signin: "https://auth.${DOMAIN}/outpost.goauthentik.io/start?rd=$scheme://$http_host$escaped_request_uri"
+          nginx.ingress.kubernetes.io/auth-response-headers: "Set-Cookie,X-authentik-username,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-groups,X-authentik-jwt,X-authentik-meta"
+          nginx.ingress.kubernetes.io/auth-snippet: |
+            proxy_set_header Host $host;
+            proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+            proxy_set_header X-Original-URI $request_uri;
+            proxy_set_header X-Original-Host $http_host;
+            proxy_set_header X-Forwarded-Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Uri $request_uri;
+            proxy_set_header X-Original-Method $request_method;
+          nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+          nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+          nginx.ingress.kubernetes.io/proxy-buffering: "off"
+          nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+          nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+        hosts:
+          - host: oc.${DOMAIN}
+            paths:
+              - path: /
+                pathType: Prefix
+                service:
+                  identifier: openclaw
+                  port: 18789
+        tls:
+          - secretName: wildcard-le-tls-cert
+            hosts:
+              - oc.${DOMAIN}
+
+    persistence:
+      data:
+        type: persistentVolumeClaim
+        existingClaim: openclaw-data
+        globalMounts:
+          - path: /home/node/.openclaw
+      config:
+        type: configMap
+        name: openclaw-config
+        globalMounts:
+          - path: /home/node/.openclaw/openclaw.json
+            subPath: openclaw.json
+            readOnly: true
