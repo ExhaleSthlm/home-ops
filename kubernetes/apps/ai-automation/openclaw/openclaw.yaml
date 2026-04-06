@@ -168,6 +168,11 @@ spec:
             ports:
               - name: http
                 containerPort: 18789
+            probes:
+              liveness:
+                enabled: false
+              readiness:
+                enabled: false
             resources:
               requests:
                 cpu: 500m
