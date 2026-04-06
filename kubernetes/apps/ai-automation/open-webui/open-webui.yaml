@@ -36,6 +36,8 @@ spec:
   values:
     ollama:
       enabled: false
+      ollamaUrls:
+        - http://ollama.ai-automation.svc.cluster.local:11434
     pipelines:
       enabled: false
     tika:
@@ -44,9 +46,6 @@ spec:
       enabled: true
 
     replicaCount: 1
-
-    ollamaUrls:
-      - http://ollama.ai-automation.svc.cluster.local:11434
 
     image:
       repository: ghcr.io/open-webui/open-webui
