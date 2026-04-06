@@ -52,10 +52,6 @@ spec:
     replicaCount: 1
 
     commonEnvVars:
-      - name: REDIS_URL
-        value: redis://open-webui-redis.ai-automation.svc.cozy.local:6379/0
-      - name: WEBSOCKET_REDIS_URL
-        value: redis://open-webui-redis.ai-automation.svc.cozy.local:6379/1
       - name: CORS_ALLOW_ORIGIN
         value: https://owui.${DOMAIN}
 
