@@ -18,8 +18,9 @@ metadata:
   name: ollama-config
   namespace: ai-automation
 data:
-  # Set to an Ollama model name to pre-pull on startup, e.g. qwen3:1.7b.
-  preload-model: ""
+  # Set to an Ollama model name to pre-pull on startup.
+  # This defaults to a small Qwen3 model that fits the intended CPU-only use case.
+  preload-model: "qwen3:1.7b"
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
