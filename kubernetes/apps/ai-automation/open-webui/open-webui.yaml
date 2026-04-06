@@ -1,0 +1,99 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/source.toolkit.fluxcd.io/helmrepository_v1.json
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: open-webui
+  namespace: cozy-fluxcd
+spec:
+  interval: 1h
+  url: https://helm.openwebui.com/
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: open-webui
+  namespace: ai-automation
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: open-webui
+      version: 13.0.1
+      sourceRef:
+        kind: HelmRepository
+        name: open-webui
+        namespace: cozy-fluxcd
+      interval: 10m
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    ollama:
+      enabled: false
+    pipelines:
+      enabled: false
+    tika:
+      enabled: false
+    redis:
+      enabled: true
+
+    replicaCount: 1
+
+    ollamaUrls:
+      - http://ollama.ai-automation.svc.cluster.local:11434
+
+    image:
+      repository: ghcr.io/open-webui/open-webui
+      pullPolicy: IfNotPresent
+
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: local
+      accessModes:
+        - ReadWriteOnce
+
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "2"
+        memory: 2Gi
+
+    service:
+      type: ClusterIP
+      port: 80
+      containerPort: 8080
+
+    ingress:
+      enabled: true
+      class: tenant-root
+      host: owui.${DOMAIN}
+      tls: true
+      existingSecret: wildcard-le-tls-cert
+      annotations:
+        external-dns.alpha.kubernetes.io/target: ${CLOUDFLARE_TUNNEL_TARGET}
+        external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+        external-dns.alpha.kubernetes.io/hostname: "owui.${DOMAIN}"
+        nginx.ingress.kubernetes.io/auth-url: "https://auth.${DOMAIN}/outpost.goauthentik.io/auth/nginx"
+        nginx.ingress.kubernetes.io/auth-signin: "https://auth.${DOMAIN}/outpost.goauthentik.io/start?rd=$scheme://$http_host$escaped_request_uri"
+        nginx.ingress.kubernetes.io/auth-response-headers: "Set-Cookie,X-authentik-username,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-groups,X-authentik-jwt,X-authentik-meta"
+        nginx.ingress.kubernetes.io/auth-snippet: |
+          proxy_set_header Host $host;
+          proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+          proxy_set_header X-Original-URI $request_uri;
+          proxy_set_header X-Original-Host $http_host;
+          proxy_set_header X-Forwarded-Host $http_host;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Uri $request_uri;
+          proxy_set_header X-Original-Method $request_method;
+
+    podAnnotations:
+      reloader.stakater.com/auto: "true"
