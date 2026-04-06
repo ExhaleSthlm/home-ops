@@ -12,67 +12,6 @@ spec:
       storage: 10Gi
   storageClassName: local
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: openclaw-config
-  namespace: ai-automation
-data:
-  openclaw.json: |
-    {
-      "gateway": {
-        "mode": "local",
-        "port": 18789,
-        "bind": "lan",
-        "auth": {
-          "mode": "token",
-          "token": "${OPENCLAW_GATEWAY_TOKEN}"
-        },
-        "controlUi": {
-          "enabled": true,
-          "allowedOrigins": ["https://oc.${DOMAIN}"]
-        }
-      },
-      "agents": {
-        "defaults": {
-          "model": {
-            "primary": "litellm/ollama-default"
-          }
-        }
-      },
-      "models": {
-        "mode": "merge",
-        "providers": {
-          "litellm": {
-            "name": "LiteLLM",
-            "baseUrl": "http://litellm.ai-automation.svc.cozy.local:4000/v1",
-            "api": "openai-completions",
-            "apiKey": "${LITELLM_API_KEY}",
-            "models": [
-              {
-                "id": "ollama-default",
-                "name": "Ollama Default",
-                "reasoning": false,
-                "input": ["text"],
-                "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
-                "contextWindow": 32768,
-                "maxTokens": 8192
-              },
-              {
-                "id": "ollama-fast",
-                "name": "Ollama Fast",
-                "reasoning": false,
-                "input": ["text"],
-                "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
-                "contextWindow": 32768,
-                "maxTokens": 8192
-              }
-            ]
-          }
-        }
-      }
-    }
----
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -91,6 +30,61 @@ spec:
       metadata:
         labels:
           reloader.stakater.com/auto: "true"
+      data:
+        openclaw.json: |
+          {
+            "gateway": {
+              "mode": "local",
+              "port": 18789,
+              "bind": "lan",
+              "auth": {
+                "mode": "token",
+                "token": "{{ .OPENCLAW_GATEWAY_TOKEN }}"
+              },
+              "controlUi": {
+                "enabled": true,
+                "allowedOrigins": ["https://oc.${DOMAIN}"]
+              }
+            },
+            "agents": {
+              "defaults": {
+                "model": {
+                  "primary": "litellm/ollama-default"
+                }
+              }
+            },
+            "models": {
+              "mode": "merge",
+              "providers": {
+                "litellm": {
+                  "name": "LiteLLM",
+                  "baseUrl": "http://litellm.ai-automation.svc.cozy.local:4000/v1",
+                  "api": "openai-completions",
+                  "apiKey": "{{ .LITELLM_API_KEY }}",
+                  "models": [
+                    {
+                      "id": "ollama-default",
+                      "name": "Ollama Default",
+                      "reasoning": false,
+                      "input": ["text"],
+                      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+                      "contextWindow": 32768,
+                      "maxTokens": 8192
+                    },
+                    {
+                      "id": "ollama-fast",
+                      "name": "Ollama Fast",
+                      "reasoning": false,
+                      "input": ["text"],
+                      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+                      "contextWindow": 32768,
+                      "maxTokens": 8192
+                    }
+                  ]
+                }
+              }
+            }
+          }
   data:
     - secretKey: OPENCLAW_GATEWAY_TOKEN
       remoteRef:
@@ -125,6 +119,19 @@ spec:
       openclaw:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          fix-permissions:
+            image:
+              repository: busybox
+              tag: 1.37.0
+            command:
+              - sh
+              - -ec
+              - |
+                chown -R 1000:1000 /home/node/.openclaw
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
         containers:
           app:
             image:
@@ -172,6 +179,14 @@ spec:
               limits:
                 cpu: "2"
                 memory: 4Gi
+
+    defaultPodOptions:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
 
     service:
       openclaw:
@@ -231,8 +246,8 @@ spec:
         globalMounts:
           - path: /home/node/.openclaw
       config:
-        type: configMap
-        name: openclaw-config
+        type: secret
+        name: openclaw-env
         globalMounts:
           - path: /home/node/.openclaw/openclaw.json
             subPath: openclaw.json
