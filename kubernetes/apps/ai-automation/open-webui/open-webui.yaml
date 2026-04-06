@@ -51,6 +51,12 @@ spec:
       repository: ghcr.io/open-webui/open-webui
       pullPolicy: IfNotPresent
 
+    extraEnvVars:
+      - name: REDIS_URL
+        value: redis://open-webui-redis.ai-automation.svc.cozy.local:6379/0
+      - name: WEBSOCKET_REDIS_URL
+        value: redis://open-webui-redis.ai-automation.svc.cozy.local:6379/0
+
     persistence:
       enabled: true
       size: 5Gi
