@@ -68,9 +68,9 @@ spec:
                   sleep 2
                 done
 
-                if [ -n "${OLLAMA_PRELOAD_MODEL:-}" ]; then
-                  echo "Preloading model: ${OLLAMA_PRELOAD_MODEL}"
-                  ollama pull "${OLLAMA_PRELOAD_MODEL}"
+                if [ -n "$OLLAMA_PRELOAD_MODEL" ]; then
+                  echo "Preloading model: $OLLAMA_PRELOAD_MODEL"
+                  ollama pull "$OLLAMA_PRELOAD_MODEL"
                 fi
 
                 wait "$pid"
