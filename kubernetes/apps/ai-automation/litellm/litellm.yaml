@@ -7,15 +7,29 @@ metadata:
 data:
   config.yaml: |
     model_list:
-      - model_name: openclaw-cheap
+      - model_name: ollama-fast
         litellm_params:
           model: ollama/qwen3:1.7b
-          api_base: http://ollama.ai-automation.svc.cozy.local:11434
+          api_base: http://ollama-fast.ai-automation.svc.cozy.local:11434
+          extra_body:
+            think: false
+
+      - model_name: ollama-default
+        litellm_params:
+          model: ollama/nemotron-3-nano:4b
+          api_base: http://ollama-default.ai-automation.svc.cozy.local:11434
 
       - model_name: qwen3-local
         litellm_params:
           model: ollama/qwen3:1.7b
-          api_base: http://ollama.ai-automation.svc.cozy.local:11434
+          api_base: http://ollama-fast.ai-automation.svc.cozy.local:11434
+          extra_body:
+            think: false
+
+      - model_name: nemotron-local
+        litellm_params:
+          model: ollama/nemotron-3-nano:4b
+          api_base: http://ollama-default.ai-automation.svc.cozy.local:11434
 
     general_settings:
       disable_spend_logs: true

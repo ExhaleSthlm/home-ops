@@ -37,7 +37,8 @@ spec:
     ollama:
       enabled: false
     ollamaUrls:
-      - http://ollama.ai-automation.svc.cozy.local:11434
+      - http://ollama-fast.ai-automation.svc.cozy.local:11434
+      - http://ollama-default.ai-automation.svc.cozy.local:11434
     enableOpenaiApi: false
     pipelines:
       enabled: false
@@ -62,7 +63,7 @@ spec:
       - name: ENABLE_OLLAMA_API
         value: "True"
       - name: OLLAMA_BASE_URL
-        value: http://ollama.ai-automation.svc.cozy.local:11434
+        value: http://ollama-fast.ai-automation.svc.cozy.local:11434
       - name: ENABLE_OPENAI_API
         value: "False"
 
