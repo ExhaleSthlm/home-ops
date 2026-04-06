@@ -128,7 +128,10 @@ spec:
               - sh
               - -ec
               - |
-                chown -R 1000:1000 /home/node/.openclaw
+                find /home/node/.openclaw \
+                  -mindepth 1 \
+                  ! -path /home/node/.openclaw/openclaw.json \
+                  -exec chown -R 1000:1000 {} +
             securityContext:
               runAsUser: 0
               runAsGroup: 0
