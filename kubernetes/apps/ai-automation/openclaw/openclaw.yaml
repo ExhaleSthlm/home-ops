@@ -156,6 +156,10 @@ spec:
             envFrom:
               - secretRef:
                   name: openclaw-env
+            securityContext:
+              runAsGroup: 1000
+              runAsNonRoot: true
+              runAsUser: 1000
             ports:
               - name: http
                 containerPort: 18789
@@ -184,9 +188,6 @@ spec:
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
-        runAsGroup: 1000
-        runAsNonRoot: true
-        runAsUser: 1000
 
     service:
       openclaw:
