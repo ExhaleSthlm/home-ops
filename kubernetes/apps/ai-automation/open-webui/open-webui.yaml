@@ -60,12 +60,6 @@ spec:
     extraEnvVars:
       - name: ENABLE_PERSISTENT_CONFIG
         value: "False"
-      - name: ENABLE_OLLAMA_API
-        value: "True"
-      - name: OLLAMA_BASE_URL
-        value: http://ollama-fast.ai-automation.svc.cozy.local:11434
-      - name: ENABLE_OPENAI_API
-        value: "False"
 
     image:
       repository: ghcr.io/open-webui/open-webui
