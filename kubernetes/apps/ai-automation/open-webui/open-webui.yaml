@@ -36,8 +36,8 @@ spec:
   values:
     ollama:
       enabled: false
-      ollamaUrls:
-        - http://ollama.ai-automation.svc.cozy.local:11434
+    ollamaUrls:
+      - http://ollama.ai-automation.svc.cozy.local:11434
     pipelines:
       enabled: false
     tika:
@@ -52,8 +52,6 @@ spec:
     replicaCount: 1
 
     commonEnvVars:
-      - name: ENABLE_OLLAMA_API
-        value: "True"
       - name: CORS_ALLOW_ORIGIN
         value: https://owui.${DOMAIN}
 
