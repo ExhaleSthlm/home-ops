@@ -38,6 +38,7 @@ spec:
       enabled: false
     ollamaUrls:
       - http://ollama.ai-automation.svc.cozy.local:11434
+    enableOpenaiApi: false
     pipelines:
       enabled: false
     tika:
@@ -54,6 +55,16 @@ spec:
     commonEnvVars:
       - name: CORS_ALLOW_ORIGIN
         value: https://owui.${DOMAIN}
+
+    extraEnvVars:
+      - name: ENABLE_PERSISTENT_CONFIG
+        value: "False"
+      - name: ENABLE_OLLAMA_API
+        value: "True"
+      - name: OLLAMA_BASE_URL
+        value: http://ollama.ai-automation.svc.cozy.local:11434
+      - name: ENABLE_OPENAI_API
+        value: "False"
 
     image:
       repository: ghcr.io/open-webui/open-webui
