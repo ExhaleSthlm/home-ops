@@ -149,6 +149,7 @@ spec:
               - lan
               - --port
               - "18789"
+              - --verbose
             env:
               - name: HOME
                 value: /home/node
