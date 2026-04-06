@@ -91,10 +91,10 @@ spec:
                 containerPort: 11434
             resources:
               requests:
-                cpu: "1"
+                cpu: "2"
                 memory: 5Gi
               limits:
-                cpu: "4"
+                cpu: "6"
                 memory: 16Gi
 
     service:
