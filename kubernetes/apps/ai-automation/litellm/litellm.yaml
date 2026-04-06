@@ -1,0 +1,110 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: ai-automation
+data:
+  config.yaml: |
+    model_list:
+      - model_name: openclaw-cheap
+        litellm_params:
+          model: ollama/qwen3:1.7b
+          api_base: http://ollama.ai-automation.svc.cozy.local:11434
+
+      - model_name: qwen3-local
+        litellm_params:
+          model: ollama/qwen3:1.7b
+          api_base: http://ollama.ai-automation.svc.cozy.local:11434
+
+    general_settings:
+      disable_spend_logs: true
+
+    router_settings:
+      routing_strategy: simple-shuffle
+
+    # Future external model example:
+    # model_list:
+    #   - model_name: openclaw-heavy
+    #     litellm_params:
+    #       model: openrouter/openai/gpt-5-mini
+    #       api_key: os.environ/OPENROUTER_API_KEY
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: litellm
+  namespace: ai-automation
+  annotations:
+    lineage.cozystack.io/ignore: "true"
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+    namespace: cozy-fluxcd
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      litellm:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/berriai/litellm
+              tag: v1.81.3-stable@sha256:3d80908e35230a0dfb58051ae4e2847371b2a327b44e105e79b8c4f67a65596c
+              pullPolicy: IfNotPresent
+            command:
+              - litellm
+            args:
+              - --config
+              - /app/config.yaml
+              - --host
+              - 0.0.0.0
+              - --port
+              - "4000"
+              - --num_workers
+              - "1"
+            env:
+              - name: TZ
+                value: ${TZ}
+            ports:
+              - name: http
+                containerPort: 4000
+            resources:
+              requests:
+                cpu: 200m
+                memory: 512Mi
+              limits:
+                cpu: "1"
+                memory: 1Gi
+
+    service:
+      litellm:
+        controller: litellm
+        annotations:
+          external-dns.alpha.kubernetes.io/internal: "true"
+          external-dns.alpha.kubernetes.io/hostname: "litellm.${DOMAIN}"
+          external-dns.alpha.kubernetes.io/target: "cluster-ingress.${DOMAIN}"
+        ports:
+          http:
+            port: 4000
+            targetPort: http
+
+    persistence:
+      config:
+        enabled: true
+        type: configMap
+        name: litellm-config
+        globalMounts:
+          - path: /app/config.yaml
+            subPath: config.yaml
+            readOnly: true

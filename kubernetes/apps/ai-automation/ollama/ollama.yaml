@@ -20,7 +20,7 @@ metadata:
 data:
   # Set to an Ollama model name to pre-pull on startup.
   # This defaults to a small Qwen3 model that fits the intended CPU-only use case.
-  preload-model: "qwen3.5:2b"
+  preload-model: "qwen3:1.7b"
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
@@ -52,7 +52,7 @@ spec:
           app:
             image:
               repository: ollama/ollama
-              tag: 0.20.2
+              tag: 0.20.2@sha256:0455f166da85b1d07f694c33ba09278ca649603c0611ba8e46272b16eed7fccd
               pullPolicy: IfNotPresent
             command:
               - /bin/sh
