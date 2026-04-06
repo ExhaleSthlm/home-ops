@@ -71,6 +71,8 @@ spec:
                 if [ -n "$OLLAMA_PRELOAD_MODEL" ]; then
                   echo "Preloading model: $OLLAMA_PRELOAD_MODEL"
                   ollama pull "$OLLAMA_PRELOAD_MODEL"
+                  echo "Warming model: $OLLAMA_PRELOAD_MODEL"
+                  ollama run "$OLLAMA_PRELOAD_MODEL" "Say ready." >/dev/null
                 fi
 
                 wait "$pid"
@@ -78,7 +80,7 @@ spec:
               - name: OLLAMA_MODELS
                 value: /root/.ollama/models
               - name: OLLAMA_KEEP_ALIVE
-                value: 10m
+                value: 24h
               - name: OLLAMA_PRELOAD_MODEL
                 valueFrom:
                   configMapKeyRef:
