@@ -57,7 +57,6 @@ spec:
               "mode": "merge",
               "providers": {
                 "litellm": {
-                  "name": "LiteLLM",
                   "baseUrl": "http://litellm.ai-automation.svc.cozy.local:4000/v1",
                   "api": "openai-completions",
                   "apiKey": "{{ .LITELLM_API_KEY }}",
