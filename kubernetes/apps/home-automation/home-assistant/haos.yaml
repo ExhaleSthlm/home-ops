@@ -4,8 +4,7 @@
 # - HAOS image URL/version: edit DataVolume.spec.source.http.url
 # - VM CPU/RAM: edit spec.template.spec.domain.cpu.cores and memory.guest
 # - Disk size/storageClass: edit DataVolume.spec.storage
-# - Static IoT IP/gateway: edit cloudInitNoCloud.networkData
-# - Hostname/Ingress host: edit cloudInitNoCloud.userData + Ingress host
+# - Static IoT IP: edit cloudInitNoCloud.networkData
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -84,11 +83,17 @@ spec:
               disk:
                 bus: virtio
           interfaces:
+            - name: default
+              masquerade: {}
+              model: virtio
+              macAddress: "02:00:00:00:00:10"
             - name: iotvlan
               bridge: {}
               model: virtio
-              macAddress: "02:00:00:22:00:10"
+              macAddress: "02:00:00:23:00:10"
       networks:
+        - name: default
+          pod: {}
         - name: iotvlan
           multus:
             networkName: default/iot-vlan233
@@ -101,18 +106,22 @@ spec:
             userData: |
               #cloud-config
               hostname: ha
-              fqdn: ha.${DOMAIN}
+              fqdn: ha.myk8s.se
             networkData: |
               version: 2
               ethernets:
-                enp1s0:
+                lan0:
+                  match:
+                    macaddress: "02:00:00:00:00:10"
+                  set-name: eth0
+                  dhcp4: true
+                iot0:
+                  match:
+                    macaddress: "02:00:00:23:00:10"
+                  set-name: eth1
                   dhcp4: false
                   addresses:
                     - 192.168.233.10/24
-                  gateway4: 192.168.233.1
-                  nameservers:
-                    addresses:
-                      - 192.168.233.1
 ---
 apiVersion: v1
 kind: Service
@@ -124,7 +133,7 @@ metadata:
     app.kubernetes.io/component: service
   annotations:
     external-dns.alpha.kubernetes.io/internal: "true"
-    external-dns.alpha.kubernetes.io/hostname: "ha.${DOMAIN}"
+    external-dns.alpha.kubernetes.io/hostname: "ha.myk8s.se"
     external-dns.alpha.kubernetes.io/target: "cluster-ingress.${DOMAIN}"
 spec:
   selector:
@@ -145,17 +154,17 @@ metadata:
     app.kubernetes.io/name: home-assistant
     app.kubernetes.io/component: ingress
   annotations:
-    external-dns.alpha.kubernetes.io/hostname: "ha.${DOMAIN}"
+    external-dns.alpha.kubernetes.io/hostname: "ha.myk8s.se"
     external-dns.alpha.kubernetes.io/target: ${CLOUDFLARE_TUNNEL_TARGET}
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
 spec:
   ingressClassName: tenant-root
   tls:
     - hosts:
-        - ha.${DOMAIN}
+        - ha.myk8s.se
       secretName: wildcard-le-tls-cert
   rules:
-    - host: ha.${DOMAIN}
+    - host: ha.myk8s.se
       http:
         paths:
           - path: /
