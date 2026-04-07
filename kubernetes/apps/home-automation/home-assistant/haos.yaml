@@ -155,7 +155,7 @@ spec:
         - ha.${DOMAIN}
       secretName: wildcard-le-tls-cert
   rules:
-    - host: homeassistant.${DOMAIN}
+    - host: ha.${DOMAIN}
       http:
         paths:
           - path: /
