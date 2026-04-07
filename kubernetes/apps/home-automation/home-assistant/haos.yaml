@@ -1,0 +1,166 @@
+---
+# All HAOS resources live in this file by design.
+# Config knobs:
+# - HAOS image URL/version: edit DataVolume.spec.source.http.url
+# - VM CPU/RAM: edit spec.template.spec.domain.cpu.cores and memory.guest
+# - Disk size/storageClass: edit DataVolume.spec.storage
+# - Static IoT IP/gateway: edit cloudInitNoCloud.networkData
+# - Hostname/Ingress host: edit cloudInitNoCloud.userData + Ingress host
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: home-assistant
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/part-of: home-automation
+    ingress.svc.egress: allow
+---
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: haos-rootdisk
+  namespace: home-assistant
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/component: storage
+spec:
+  source:
+    http:
+      url: https://github.com/home-assistant/operating-system/releases/download/17.2/haos_ova-17.2.qcow2.xz
+  storage:
+    resources:
+      requests:
+        storage: 64Gi
+    storageClassName: local
+    accessModes:
+      - ReadWriteOnce
+    volumeMode: Filesystem
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: haos
+  namespace: home-assistant
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/component: vm
+  annotations:
+    kubevirt.io/latest-observed-api-version: v1
+spec:
+  running: true
+  template:
+    metadata:
+      labels:
+        kubevirt.io/vm: haos
+        app.kubernetes.io/name: home-assistant
+        app.kubernetes.io/part-of: home-automation
+    spec:
+      architecture: amd64
+      nodeSelector:
+        kubernetes.io/hostname: k8s02
+      domain:
+        machine:
+          type: q35
+        cpu:
+          model: host-passthrough
+          cores: 2
+        memory:
+          guest: 8Gi
+        resources:
+          requests:
+            memory: 8Gi
+        firmware:
+          bootloader:
+            efi:
+              secureBoot: false
+        devices:
+          autoattachPodInterface: false
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: iotvlan
+              bridge: {}
+              model: virtio
+              macAddress: "02:00:00:22:00:10"
+      networks:
+        - name: iotvlan
+          multus:
+            networkName: default/iot-vlan233
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: haos-rootdisk
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              hostname: ha
+              fqdn: ha.${DOMAIN}
+            networkData: |
+              version: 2
+              ethernets:
+                enp1s0:
+                  addresses:
+                    - 192.168.233.10/24
+                  gateway4: 192.168.233.1
+                  nameservers:
+                    addresses:
+                      - 192.168.233.1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/component: service
+  annotations:
+    external-dns.alpha.kubernetes.io/internal: "true"
+    external-dns.alpha.kubernetes.io/hostname: "ha.${DOMAIN}"
+    external-dns.alpha.kubernetes.io/target: "cluster-ingress.${DOMAIN}"
+spec:
+  selector:
+    app.kubernetes.io/name: home-assistant
+  ports:
+    - name: http
+      port: 8123
+      protocol: TCP
+      targetPort: 8123
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/component: ingress
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "ha.${DOMAIN}"
+    external-dns.alpha.kubernetes.io/target: ${CLOUDFLARE_TUNNEL_TARGET}
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+spec:
+  ingressClassName: tenant-root
+  tls:
+    - hosts:
+        - ha.${DOMAIN}
+      secretName: wildcard-le-tls-cert
+  rules:
+    - host: homeassistant.${DOMAIN}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: home-assistant
+                port:
+                  number: 8123
