@@ -1,10 +1,7 @@
 ---
-# All HAOS resources live in this file by design.
-# Config knobs:
-# - HAOS image URL/version: edit DataVolume.spec.source.http.url
-# - VM CPU/RAM: edit spec.template.spec.domain.cpu.cores and memory.guest
-# - Disk size/storageClass: edit DataVolume.spec.storage
-# - Static IoT IP: edit cloudInitNoCloud.networkData
+# Temporary diagnostic variant: keep HAOS on pod networking only until the
+# guest reliably boots with a working web endpoint. Secondary VLAN networking
+# can be added back once 8123 is confirmed healthy.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -73,7 +70,7 @@ spec:
             efi:
               secureBoot: false
         devices:
-          autoattachPodInterface: false
+          autoattachPodInterface: true
           disks:
             - name: rootdisk
               bootOrder: 1
@@ -82,21 +79,6 @@ spec:
             - name: cloudinitdisk
               disk:
                 bus: virtio
-          interfaces:
-            - name: default
-              masquerade: {}
-              model: virtio
-              macAddress: "02:00:00:00:00:10"
-            - name: iotvlan
-              bridge: {}
-              model: virtio
-              macAddress: "02:00:00:23:00:10"
-      networks:
-        - name: default
-          pod: {}
-        - name: iotvlan
-          multus:
-            networkName: default/iot-vlan233
       volumes:
         - name: rootdisk
           dataVolume:
@@ -107,21 +89,6 @@ spec:
               #cloud-config
               hostname: ha
               fqdn: ha.myk8s.se
-            networkData: |
-              version: 2
-              ethernets:
-                lan0:
-                  match:
-                    macaddress: "02:00:00:00:00:10"
-                  set-name: eth0
-                  dhcp4: true
-                iot0:
-                  match:
-                    macaddress: "02:00:00:23:00:10"
-                  set-name: eth1
-                  dhcp4: false
-                  addresses:
-                    - 192.168.233.10/24
 ---
 apiVersion: v1
 kind: Service
