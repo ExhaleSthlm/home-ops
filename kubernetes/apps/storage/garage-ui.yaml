@@ -1,0 +1,82 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage
+  labels:
+    app.kubernetes.io/name: storage
+    app.kubernetes.io/instance: storage
+    ingress.svc.egress: allow
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: garage-ui
+  namespace: storage
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 30186
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: garage-ui
+  namespace: storage
+  labels:
+    kubernetes.io/service-name: garage-ui
+addressType: IPv4
+ports:
+  - name: http
+    protocol: TCP
+    port: 30186
+endpoints:
+  - addresses:
+      - 192.168.222.13
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: garage-ui
+  namespace: storage
+  annotations:
+    external-dns.alpha.kubernetes.io/target: ${CLOUDFLARE_TUNNEL_TARGET}
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+    external-dns.alpha.kubernetes.io/hostname: "garage-ui.${DOMAIN}"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/auth-url: "https://auth.${DOMAIN}/outpost.goauthentik.io/auth/nginx"
+    nginx.ingress.kubernetes.io/auth-signin: "https://auth.${DOMAIN}/outpost.goauthentik.io/start?rd=$scheme://$http_host$escaped_request_uri"
+    nginx.ingress.kubernetes.io/auth-response-headers: "Set-Cookie,X-authentik-username,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-groups,X-authentik-jwt,X-authentik-meta"
+    nginx.ingress.kubernetes.io/auth-snippet: |
+      proxy_set_header Host $host;
+      proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+      proxy_set_header X-Original-URI $request_uri;
+      proxy_set_header X-Original-Host $http_host;
+      proxy_set_header X-Forwarded-Host $http_host;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_set_header X-Forwarded-Uri $request_uri;
+      proxy_set_header X-Original-Method $request_method;
+spec:
+  ingressClassName: tenant-root
+  tls:
+    - secretName: wildcard-le-tls-cert
+      hosts:
+        - garage-ui.${DOMAIN}
+  rules:
+    - host: garage-ui.${DOMAIN}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: garage-ui
+                port:
+                  number: 80
