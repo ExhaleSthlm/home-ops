@@ -44,8 +44,8 @@ spec:
           }
         NC_ADMIN_EMAIL: "{{ .admin_email }}"
         NC_ADMIN_PASSWORD: "{{ .admin_password }}"
-        MINIO_ROOT_USER: "{{ .minio_access_key }}"
-        MINIO_ROOT_PASSWORD: "{{ .minio_secret_key }}"
+        #MINIO_ROOT_USER: "{{ .minio_access_key }}"
+        #MINIO_ROOT_PASSWORD: "{{ .minio_secret_key }}"
         NC_S3_BUCKET_NAME: "nocodb"
         NC_S3_ACCESS_KEY: "{{ .s3_access_key }}"
         NC_S3_ACCESS_SECRET: "{{ .s3_secret_key }}"
