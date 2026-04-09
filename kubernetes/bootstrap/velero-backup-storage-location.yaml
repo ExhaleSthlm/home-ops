@@ -1,0 +1,47 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/external-secrets/external-secrets/refs/heads/main/config/crds/bases/external-secrets.io_externalsecrets.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: es-velero-credentials
+  namespace: cozy-velero
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: infisical
+  target:
+    name: velero
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      data:
+        cloud: |
+          [default]
+          aws_access_key_id={{ .access_key }}
+          aws_secret_access_key={{ .secret_key }}
+  data:
+    - secretKey: access_key
+      remoteRef:
+        key: /VELERO/S3_ACCESS_KEY
+    - secretKey: secret_key
+      remoteRef:
+        key: /S3_SECRET_KEY
+---
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: default
+  namespace: cozy-velero
+spec:
+  provider: aws
+  default: true
+  credential:
+    name: velero
+    key: cloud
+  objectStorage:
+    bucket: velero
+  config:
+    region: us-east-1
+    s3Url: http://192.168.222.13:30188
+    s3ForcePathStyle: "true"
