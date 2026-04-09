@@ -146,6 +146,19 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+              name: velero-ui
+            patch: |
+              - op: replace
+                path: /spec/template/spec/containers/0/livenessProbe/httpGet/path
+                value: /
+              - op: replace
+                path: /spec/template/spec/containers/0/readinessProbe/httpGet/path
+                value: /
   values:
     image:
       repository: otwld/velero-ui
