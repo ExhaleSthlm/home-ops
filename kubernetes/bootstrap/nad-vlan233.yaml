@@ -18,7 +18,6 @@ spec:
           "bridge": "br233",
           "promiscMode": true,
           "disableContainerInterface": true
-          "macspoofchk": true
         }
       ]
     }
