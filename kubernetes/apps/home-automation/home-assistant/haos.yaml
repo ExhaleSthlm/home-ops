@@ -73,7 +73,6 @@ spec:
               bridge: {}
             - name: iotvlan
               bridge: {}
-              macAddress: "02:23:33:10:81:23"
           disks:
             - name: rootdisk
               bootOrder: 1
