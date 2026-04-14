@@ -70,7 +70,7 @@ spec:
           autoattachPodInterface: false
           interfaces:
             - name: default
-              bridge: {}
+              masquerade: {}
             - name: iotvlan
               bridge: {}
           disks:
