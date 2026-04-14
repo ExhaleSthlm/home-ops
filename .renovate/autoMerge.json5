@@ -61,6 +61,13 @@
       ignoreTests: true,
     },
     {
+      description: "Do not auto-merge Blocky updates",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/0xerr0r/blocky", "0xerr0r/blocky"],
+      automerge: false,
+      platformAutomerge: false,
+    },
+    {
       description: "Auto-merge all non-major updates",
       matchUpdateTypes: [
         "minor",
