@@ -190,7 +190,7 @@ spec:
         controller: openclaw
         annotations:
           external-dns.alpha.kubernetes.io/internal: "true"
-          external-dns.alpha.kubernetes.io/hostname: "openclaw.${DOMAIN}"
+          external-dns.alpha.kubernetes.io/hostname: "oc.${DOMAIN}"
           external-dns.alpha.kubernetes.io/target: "cluster-ingress.${DOMAIN}"
         ports:
           http:
