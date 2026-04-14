@@ -472,6 +472,175 @@ data:
     CREATE INDEX idx_user_agreements_user_id ON user_agreements(user_id);
     CREATE INDEX idx_user_agreements_version ON user_agreements(agreement_version);
 
+  poweradmin-compat.sql: |
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_method VARCHAR(20) NOT NULL DEFAULT 'sql';
+    UPDATE users SET auth_method='ldap' WHERE use_ldap=1;
+    ALTER TABLE perm_templ ADD COLUMN IF NOT EXISTS template_type VARCHAR(20) NOT NULL DEFAULT 'user';
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'perm_templ_template_type_check') THEN
+        ALTER TABLE perm_templ ADD CONSTRAINT perm_templ_template_type_check CHECK (template_type IN ('user', 'group'));
+      END IF;
+    END $$;
+
+    CREATE SEQUENCE IF NOT EXISTS user_groups_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
+    CREATE TABLE IF NOT EXISTS public.user_groups (
+      id integer DEFAULT nextval('user_groups_id_seq') NOT NULL,
+      name character varying(100) NOT NULL,
+      description text,
+      perm_templ integer NOT NULL,
+      created_by integer,
+      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+      updated_at timestamp DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT user_groups_pkey PRIMARY KEY (id),
+      CONSTRAINT user_groups_name_key UNIQUE (name),
+      CONSTRAINT user_groups_created_by_fkey FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+      CONSTRAINT user_groups_perm_templ_fkey FOREIGN KEY (perm_templ) REFERENCES perm_templ(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_groups_created_by ON public.user_groups USING btree (created_by);
+    CREATE INDEX IF NOT EXISTS idx_user_groups_name ON public.user_groups USING btree (name);
+    CREATE INDEX IF NOT EXISTS idx_user_groups_perm_templ ON public.user_groups USING btree (perm_templ);
+
+    CREATE OR REPLACE FUNCTION update_user_groups_updated_at()
+    RETURNS TRIGGER AS $$
+    BEGIN
+      NEW.updated_at = CURRENT_TIMESTAMP;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS user_groups_updated_at_trigger ON public.user_groups;
+    CREATE TRIGGER user_groups_updated_at_trigger
+    BEFORE UPDATE ON public.user_groups
+    FOR EACH ROW
+    EXECUTE FUNCTION update_user_groups_updated_at();
+
+    CREATE SEQUENCE IF NOT EXISTS user_group_members_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
+    CREATE TABLE IF NOT EXISTS public.user_group_members (
+      id integer DEFAULT nextval('user_group_members_id_seq') NOT NULL,
+      group_id integer NOT NULL,
+      user_id integer NOT NULL,
+      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT user_group_members_pkey PRIMARY KEY (id),
+      CONSTRAINT user_group_members_group_id_user_id_key UNIQUE (group_id, user_id),
+      CONSTRAINT user_group_members_group_id_fkey FOREIGN KEY (group_id) REFERENCES user_groups(id) ON DELETE CASCADE,
+      CONSTRAINT user_group_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_group_members_group ON public.user_group_members USING btree (group_id);
+    CREATE INDEX IF NOT EXISTS idx_user_group_members_user ON public.user_group_members USING btree (user_id);
+
+    CREATE SEQUENCE IF NOT EXISTS zones_groups_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
+    CREATE TABLE IF NOT EXISTS public.zones_groups (
+      id integer DEFAULT nextval('zones_groups_id_seq') NOT NULL,
+      domain_id integer NOT NULL,
+      group_id integer NOT NULL,
+      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT zones_groups_pkey PRIMARY KEY (id),
+      CONSTRAINT zones_groups_domain_id_group_id_key UNIQUE (domain_id, group_id),
+      CONSTRAINT zones_groups_group_id_fkey FOREIGN KEY (group_id) REFERENCES user_groups(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_zones_groups_domain ON public.zones_groups USING btree (domain_id);
+    CREATE INDEX IF NOT EXISTS idx_zones_groups_group ON public.zones_groups USING btree (group_id);
+
+    CREATE SEQUENCE IF NOT EXISTS log_groups_id_seq1 INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
+    CREATE TABLE IF NOT EXISTS public.log_groups (
+      id integer DEFAULT nextval('log_groups_id_seq1') NOT NULL,
+      event character varying(2048) NOT NULL,
+      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+      priority integer NOT NULL,
+      group_id integer,
+      CONSTRAINT log_groups_pkey PRIMARY KEY (id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_log_groups_group_id ON public.log_groups USING btree (group_id);
+  reverse-zones.sql: |
+    DELETE FROM records
+    WHERE name IN ('ns01.${DOMAIN}', 'ns02.${DOMAIN}')
+      AND type = 'NS'
+      AND content IN ('192.168.222.101', '192.168.222.102');
+
+    INSERT INTO records(domain_id, name, type, content, ttl, prio, disabled, auth)
+    SELECT d.id, 'ns1.${DOMAIN}', 'A', '192.168.222.101', 3600, 0, false, true
+    FROM domains d
+    WHERE d.name = '${DOMAIN}'
+      AND NOT EXISTS (
+        SELECT 1 FROM records r WHERE r.domain_id = d.id AND r.name = 'ns1.${DOMAIN}' AND r.type = 'A' AND r.content = '192.168.222.101'
+      );
+
+    INSERT INTO records(domain_id, name, type, content, ttl, prio, disabled, auth)
+    SELECT d.id, 'ns2.${DOMAIN}', 'A', '192.168.222.102', 3600, 0, false, true
+    FROM domains d
+    WHERE d.name = '${DOMAIN}'
+      AND NOT EXISTS (
+        SELECT 1 FROM records r WHERE r.domain_id = d.id AND r.name = 'ns2.${DOMAIN}' AND r.type = 'A' AND r.content = '192.168.222.102'
+      );
+
+    INSERT INTO records(domain_id, name, type, content, ttl, prio, disabled, auth)
+    SELECT d.id, '${DOMAIN}', 'NS', 'ns1.${DOMAIN}', 3600, 0, false, true
+    FROM domains d
+    WHERE d.name = '${DOMAIN}'
+      AND NOT EXISTS (
+        SELECT 1 FROM records r WHERE r.domain_id = d.id AND r.name = '${DOMAIN}' AND r.type = 'NS' AND r.content = 'ns1.${DOMAIN}'
+      );
+
+    INSERT INTO records(domain_id, name, type, content, ttl, prio, disabled, auth)
+    SELECT d.id, '${DOMAIN}', 'NS', 'ns2.${DOMAIN}', 3600, 0, false, true
+    FROM domains d
+    WHERE d.name = '${DOMAIN}'
+      AND NOT EXISTS (
+        SELECT 1 FROM records r WHERE r.domain_id = d.id AND r.name = '${DOMAIN}' AND r.type = 'NS' AND r.content = 'ns2.${DOMAIN}'
+      );
+
+    INSERT INTO domains(name, type) VALUES
+      ('222.168.192.in-addr.arpa', 'MASTER'),
+      ('232.168.192.in-addr.arpa', 'MASTER'),
+      ('233.168.192.in-addr.arpa', 'MASTER')
+    ON CONFLICT (name) DO NOTHING;
+
+    DO $$
+    DECLARE
+      z text;
+      did integer;
+    BEGIN
+      FOREACH z IN ARRAY ARRAY['222.168.192.in-addr.arpa', '232.168.192.in-addr.arpa', '233.168.192.in-addr.arpa'] LOOP
+        SELECT id INTO did FROM domains WHERE name = z;
+        IF NOT EXISTS (SELECT 1 FROM records WHERE domain_id = did AND name = z AND type = 'SOA') THEN
+          INSERT INTO records(domain_id, name, type, content, ttl, prio, disabled, auth)
+          VALUES (did, z, 'SOA', 'ns1.${DOMAIN} hostmaster.${DOMAIN} 2026041401 28800 7200 604800 86400', 3600, 0, false, true);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM records WHERE domain_id = did AND name = z AND type = 'NS' AND content = 'ns1.${DOMAIN}') THEN
+          INSERT INTO records(domain_id, name, type, content, ttl, prio, disabled, auth)
+          VALUES (did, z, 'NS', 'ns1.${DOMAIN}', 3600, 0, false, true);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM records WHERE domain_id = did AND name = z AND type = 'NS' AND content = 'ns2.${DOMAIN}') THEN
+          INSERT INTO records(domain_id, name, type, content, ttl, prio, disabled, auth)
+          VALUES (did, z, 'NS', 'ns2.${DOMAIN}', 3600, 0, false, true);
+        END IF;
+      END LOOP;
+    END $$;
+
+    DO $$
+    DECLARE
+      r record;
+      zone_name text;
+      ptr_name text;
+      did integer;
+    BEGIN
+      FOR r IN
+        SELECT name, content, COALESCE(ttl, 3600) AS ttl
+        FROM records
+        WHERE type = 'A'
+          AND content ~ '^192\.168\.(222|232|233)\.[0-9]+$'
+      LOOP
+        zone_name := split_part(r.content, '.', 3) || '.168.192.in-addr.arpa';
+        ptr_name := split_part(r.content, '.', 4) || '.' || zone_name;
+        SELECT id INTO did FROM domains WHERE name = zone_name;
+        IF did IS NOT NULL AND NOT EXISTS (
+          SELECT 1 FROM records pr WHERE pr.domain_id = did AND pr.name = ptr_name AND pr.type = 'PTR' AND pr.content = r.name
+        ) THEN
+          INSERT INTO records(domain_id, name, type, content, ttl, prio, disabled, auth)
+          VALUES (did, ptr_name, 'PTR', r.name, r.ttl, 0, false, true);
+        END IF;
+      END LOOP;
+    END $$;
 # end of ConfigMap data
 ---
 apiVersion: batch/v1
@@ -515,8 +684,8 @@ spec:
               apply /schema/schema.sql
               # Allow reruns if schema already present
               PGPASSWORD="$DB_PASSWORD" psql -v ON_ERROR_STOP=0 -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -f /schema/poweradmin-pgsql-db-structure.sql
-              echo "Ensuring NS records exist for all domains..."
-              PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -c "DO \$\$ DECLARE r record; BEGIN FOR r IN SELECT id, name FROM domains LOOP IF NOT EXISTS (SELECT 1 FROM records WHERE domain_id = r.id AND type = 'NS') THEN INSERT INTO records(domain_id, name, type, content, ttl, prio, disabled, auth) VALUES (r.id, r.name, 'NS', 'ns1.${DOMAIN}', 3600, 0, false, true), (r.id, r.name, 'NS', 'ns2.${DOMAIN}', 3600, 0, false, true); END IF; END LOOP; END \$\$;"
+              echo "Ensuring authoritative and reverse DNS records exist..."
+              PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -f /schema/reverse-zones.sql
               echo "Schemas applied"
           volumeMounts:
             - name: powerdns-schema
@@ -712,82 +881,7 @@ spec:
                 if PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -tAc "SELECT 1 FROM pg_tables WHERE tablename='users';" | grep -q 1; then
                   echo "PowerAdmin schema already present";
                   echo "Running PowerAdmin compatibility migration checks...";
-                  PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -c "ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_method VARCHAR(20) NOT NULL DEFAULT 'sql';"
-                  PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -c "UPDATE users SET auth_method='ldap' WHERE use_ldap=1;"
-                  PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -c "ALTER TABLE perm_templ ADD COLUMN IF NOT EXISTS template_type VARCHAR(20) NOT NULL DEFAULT 'user';"
-                  PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -c "DO \\$\\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'perm_templ_template_type_check') THEN ALTER TABLE perm_templ ADD CONSTRAINT perm_templ_template_type_check CHECK (template_type IN ('user', 'group')); END IF; END \\$\\$;"
-                  if ! PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -tAc "SELECT 1 FROM pg_tables WHERE tablename='user_group_members';" | grep -q 1; then
-                    echo "Applying PowerAdmin 4.2.0 compatibility schema..."
-                    PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns <<'SQL'
-                    CREATE SEQUENCE IF NOT EXISTS user_groups_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
-                    CREATE TABLE IF NOT EXISTS public.user_groups (
-                      id integer DEFAULT nextval('user_groups_id_seq') NOT NULL,
-                      name character varying(100) NOT NULL,
-                      description text,
-                      perm_templ integer NOT NULL,
-                      created_by integer,
-                      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-                      updated_at timestamp DEFAULT CURRENT_TIMESTAMP,
-                      CONSTRAINT user_groups_pkey PRIMARY KEY (id),
-                      CONSTRAINT user_groups_name_key UNIQUE (name),
-                      CONSTRAINT user_groups_created_by_fkey FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
-                      CONSTRAINT user_groups_perm_templ_fkey FOREIGN KEY (perm_templ) REFERENCES perm_templ(id)
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_user_groups_created_by ON public.user_groups USING btree (created_by);
-                    CREATE INDEX IF NOT EXISTS idx_user_groups_name ON public.user_groups USING btree (name);
-                    CREATE INDEX IF NOT EXISTS idx_user_groups_perm_templ ON public.user_groups USING btree (perm_templ);
-                    CREATE OR REPLACE FUNCTION update_user_groups_updated_at()
-                    RETURNS TRIGGER AS $$
-                    BEGIN
-                      NEW.updated_at = CURRENT_TIMESTAMP;
-                      RETURN NEW;
-                    END;
-                    $$ LANGUAGE plpgsql;
-                    DROP TRIGGER IF EXISTS user_groups_updated_at_trigger ON public.user_groups;
-                    CREATE TRIGGER user_groups_updated_at_trigger
-                    BEFORE UPDATE ON public.user_groups
-                    FOR EACH ROW
-                    EXECUTE FUNCTION update_user_groups_updated_at();
-
-                    CREATE SEQUENCE IF NOT EXISTS user_group_members_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
-                    CREATE TABLE IF NOT EXISTS public.user_group_members (
-                      id integer DEFAULT nextval('user_group_members_id_seq') NOT NULL,
-                      group_id integer NOT NULL,
-                      user_id integer NOT NULL,
-                      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-                      CONSTRAINT user_group_members_pkey PRIMARY KEY (id),
-                      CONSTRAINT user_group_members_group_id_user_id_key UNIQUE (group_id, user_id),
-                      CONSTRAINT user_group_members_group_id_fkey FOREIGN KEY (group_id) REFERENCES user_groups(id) ON DELETE CASCADE,
-                      CONSTRAINT user_group_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_user_group_members_group ON public.user_group_members USING btree (group_id);
-                    CREATE INDEX IF NOT EXISTS idx_user_group_members_user ON public.user_group_members USING btree (user_id);
-
-                    CREATE SEQUENCE IF NOT EXISTS zones_groups_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
-                    CREATE TABLE IF NOT EXISTS public.zones_groups (
-                      id integer DEFAULT nextval('zones_groups_id_seq') NOT NULL,
-                      domain_id integer NOT NULL,
-                      group_id integer NOT NULL,
-                      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-                      CONSTRAINT zones_groups_pkey PRIMARY KEY (id),
-                      CONSTRAINT zones_groups_domain_id_group_id_key UNIQUE (domain_id, group_id),
-                      CONSTRAINT zones_groups_group_id_fkey FOREIGN KEY (group_id) REFERENCES user_groups(id) ON DELETE CASCADE
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_zones_groups_domain ON public.zones_groups USING btree (domain_id);
-                    CREATE INDEX IF NOT EXISTS idx_zones_groups_group ON public.zones_groups USING btree (group_id);
-
-                    CREATE SEQUENCE IF NOT EXISTS log_groups_id_seq1 INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
-                    CREATE TABLE IF NOT EXISTS public.log_groups (
-                      id integer DEFAULT nextval('log_groups_id_seq1') NOT NULL,
-                      event character varying(2048) NOT NULL,
-                      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-                      priority integer NOT NULL,
-                      group_id integer,
-                      CONSTRAINT log_groups_pkey PRIMARY KEY (id)
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_log_groups_group_id ON public.log_groups USING btree (group_id);
-                    SQL
-                  fi
+                  PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -f /schema/poweradmin-compat.sql
                   exit 0
                 fi
                 echo "Applying PowerAdmin schema...";
