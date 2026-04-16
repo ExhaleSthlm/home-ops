@@ -45,7 +45,7 @@ spec:
     mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
     operation: copy
   ref:
-    tag: 14.0.4
+    tag: 14.0.5
   url: oci://oci.trueforge.org/truecharts/cloudflareddns
 ---
 # HelmRelease for Cloudflare DDNS updater
