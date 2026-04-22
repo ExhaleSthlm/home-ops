@@ -643,58 +643,6 @@ data:
     END $$;
 # end of ConfigMap data
 ---
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: powerdns-apply-schemas-v2
-  namespace: local-dns
-spec:
-  backoffLimit: 1
-  template:
-    spec:
-      restartPolicy: Never
-      containers:
-        - name: apply-schemas
-          image: docker.io/library/postgres:18-alpine
-          env:
-            - name: DB_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: powerdns-db-creds
-                  key: username
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: powerdns-db-creds
-                  key: password
-          command:
-            - sh
-            - -c
-            - |
-              set -e
-              echo "Waiting for Postgres..."
-              until pg_isready -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns; do
-                sleep 2
-              done
-              apply() {
-                file="$1"
-                echo "Applying ${file}..."
-                PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -f "$file"
-              }
-              apply /schema/schema.sql
-              # Allow reruns if schema already present
-              PGPASSWORD="$DB_PASSWORD" psql -v ON_ERROR_STOP=0 -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -f /schema/poweradmin-pgsql-db-structure.sql
-              echo "Ensuring authoritative and reverse DNS records exist..."
-              PGPASSWORD="$DB_PASSWORD" psql -h powerdns-db-rw.local-dns.svc -U "$DB_USERNAME" -d powerdns -f /schema/reverse-zones.sql
-              echo "Schemas applied"
-          volumeMounts:
-            - name: powerdns-schema
-              mountPath: /schema
-      volumes:
-        - name: powerdns-schema
-          configMap:
-            name: powerdns-schema
----
 # yaml-language-server: $schema=https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/main/config/crd/bases/postgresql.cnpg.io_clusters.yaml
 # CloudNativePG Cluster for PowerDNS
 apiVersion: postgresql.cnpg.io/v1
@@ -724,6 +672,8 @@ spec:
             key: schema.sql
           - name: powerdns-schema
             key: poweradmin-pgsql-db-structure.sql
+          - name: powerdns-schema
+            key: reverse-zones.sql
 
   monitoring:
     enablePodMonitor: true
