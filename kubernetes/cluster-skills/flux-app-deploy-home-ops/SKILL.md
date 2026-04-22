@@ -43,6 +43,12 @@ Follow this workflow to add a new application in this repository without breakin
 - Mount only required paths in the container (`/app/data`, archive directory, or equivalent).
 - If dynamic NFS classes are preferred later, migrate PVCs intentionally and keep old PV retained until data is verified.
 
+## App Runtime Notes
+- Prefer the simplest runtime profile first (single pod, sqlite, minimal sidecars) for single-user services.
+- For Obico specifically: skip CNPG for small installs; keep sqlite on persistent storage.
+- Obico still depends on Redis-backed channels/cache. For "simple" setups, run Redis as a sidecar in the same pod instead of a separate Redis deployment.
+- Avoid `envsubst` on manifests that contain ingress `$scheme/$host/$request_uri` annotations; substitute only `${...}` placeholders (for example with targeted `perl -pe` replacements) to prevent NGINX auth annotations from being corrupted.
+
 ## Validation Commands
 Run from repo root:
 

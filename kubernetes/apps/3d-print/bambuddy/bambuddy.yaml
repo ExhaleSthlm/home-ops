@@ -78,7 +78,7 @@ spec:
   monitoring:
     enablePodMonitor: true
 ---
-# PersistentVolume for Bambuddy archive/data on NAS.
+# PersistentVolume for Bambuddy archive on NAS.
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -294,7 +294,7 @@ spec:
         type: persistentVolumeClaim
         existingClaim: bambuddy-data
         globalMounts:
-          - path: /app/data
+          - path: /archive
       logs:
         type: emptyDir
         globalMounts:
