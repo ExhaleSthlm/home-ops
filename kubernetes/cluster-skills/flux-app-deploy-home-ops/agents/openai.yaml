@@ -1,0 +1,3 @@
+interface:
+  display_name: "Flux Deploy Home-Ops"
+  short_description: "Deploy apps with Flux, BJW app-template, CNPG, DNS, and reflector conventions"

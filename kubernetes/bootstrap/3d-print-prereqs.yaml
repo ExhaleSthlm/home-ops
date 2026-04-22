@@ -1,0 +1,9 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: 3d-print
+  labels:
+    app.kubernetes.io/name: 3d-print
+    app.kubernetes.io/instance: 3d-print
+    ingress.svc.egress: allow
