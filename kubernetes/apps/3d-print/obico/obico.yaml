@@ -196,6 +196,9 @@ spec:
           http:
             port: 3334
             targetPort: http
+          ml-api:
+            port: 3333
+            targetPort: ml-api
 
     ingress:
       obico-api:
