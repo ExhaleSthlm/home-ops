@@ -61,6 +61,8 @@ spec:
               - -c
               - |
                 python manage.py migrate && \
+                python manage.py collectstatic -v 2 --noinput && \
+                python manage.py shell -c "from django.contrib.sites.models import Site; s,_=Site.objects.get_or_create(domain='obico.${DOMAIN}', defaults={'name':'Obico'}); s.name='Obico'; s.save()" && \
                 daphne -b 0.0.0.0 -p 3334 config.routing:application
             ports:
               - name: http
@@ -273,7 +275,10 @@ spec:
         existingClaim: obico-data
         globalMounts:
           - path: /data
-          - path: /app/static_build/media
+      static:
+        type: emptyDir
+        globalMounts:
+          - path: /app/static_build
       logs:
         type: emptyDir
         globalMounts:
