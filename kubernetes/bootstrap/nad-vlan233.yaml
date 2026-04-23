@@ -17,7 +17,7 @@ spec:
           "type": "bridge",
           "bridge": "br233",
           "promiscMode": true,
-          "disableContainerInterface": true
+          "disableContainerInterface": false
         }
       ]
     }
