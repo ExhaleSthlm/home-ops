@@ -92,7 +92,23 @@ spec:
               - name: http
                 containerPort: 7878
             probes:
-              liveness: &probes
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet: null
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -ec
+                      - |
+                        curl -fsS --max-time 4 http://127.0.0.1:7878/ping >/dev/null
+                        curl -fsS --max-time 4 http://qbittorrent.media.svc:8080 >/dev/null
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness:
                 enabled: true
                 custom: true
                 spec:
@@ -103,7 +119,6 @@ spec:
                   periodSeconds: 10
                   timeoutSeconds: 1
                   failureThreshold: 3
-              readiness: *probes
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
