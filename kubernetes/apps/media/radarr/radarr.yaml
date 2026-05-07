@@ -96,7 +96,6 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet: null
                   exec:
                     command:
                       - /bin/sh
