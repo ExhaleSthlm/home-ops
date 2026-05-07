@@ -500,12 +500,14 @@ spec:
         - ports:
             - port: "5432"
               protocol: TCP
-    # Allow egress to Minio S3 (external to cluster)
+    # Allow egress to Garage S3 (external endpoint behind cluster ingress)
     - toCIDR:
         - 192.168.222.13/32
       toPorts:
         - ports:
             - port: "9000"
+              protocol: TCP
+            - port: "30188"
               protocol: TCP
     # Allow HTTPS/HTTP to internet (for app store, updates, etc.)
     - toEntities:
