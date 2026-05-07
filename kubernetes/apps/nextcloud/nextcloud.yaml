@@ -146,6 +146,7 @@ metadata:
   name: nextcloud
   namespace: nextcloud
 spec:
+  timeout: 15m
   chart:
     spec:
       chart: nextcloud
