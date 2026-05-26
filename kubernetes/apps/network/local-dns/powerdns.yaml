@@ -677,6 +677,15 @@ spec:
 
   monitoring:
     enablePodMonitor: true
+  probes:
+    liveness:
+      isolationCheck:
+        # Disabled to avoid false-positive cross-node probe failures on /failsafe
+        # that have caused repeated liveness flaps in this cluster.
+        enabled: false
+        # Kept explicit in case isolation checks are re-enabled later.
+        connectionTimeout: 5000
+        requestTimeout: 5000
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
