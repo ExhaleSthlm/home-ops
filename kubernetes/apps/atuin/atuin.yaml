@@ -98,6 +98,7 @@ spec:
         annotations:
           lineage.cozystack.io/ignore: "true"
           external-dns.alpha.kubernetes.io/internal: "true"
+          external-dns.alpha.kubernetes.io/technitium: "true"
           external-dns.alpha.kubernetes.io/hostname: "atuin.${DOMAIN}"
           external-dns.alpha.kubernetes.io/target: "cluster-ingress.${DOMAIN}"
         ports:

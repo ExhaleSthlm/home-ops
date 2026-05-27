@@ -61,6 +61,7 @@ spec:
         controller: docling
         annotations:
           external-dns.alpha.kubernetes.io/internal: "true"
+          external-dns.alpha.kubernetes.io/technitium: "true"
           external-dns.alpha.kubernetes.io/hostname: "docling.${DOMAIN}"
           external-dns.alpha.kubernetes.io/target: "cluster-ingress.${DOMAIN}"
         ports:
