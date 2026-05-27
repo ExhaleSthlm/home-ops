@@ -92,7 +92,7 @@ spec:
   values:
     controllers:
       technitium:
-        replicas: 2
+        replicas: 3
         annotations:
           secret.reloader.stakater.com/reload: "technitium-bootstrap,technitium-gluetun-wg"
 
@@ -103,6 +103,16 @@ spec:
             runAsGroup: 0
           labels:
             app.kubernetes.io/component: technitium-dns
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: app.kubernetes.io/component
+                        operator: In
+                        values:
+                          - technitium-dns
+                  topologyKey: kubernetes.io/hostname
 
         containers:
           vpn:
