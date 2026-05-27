@@ -7,6 +7,8 @@ metadata:
     app.kubernetes.io/name: technitium-dns
     app.kubernetes.io/instance: technitium-dns
     ingress.svc.egress: allow
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: latest
 ---
 # WireGuard credentials for Gluetun sidecar (same pattern as Blocky).
 apiVersion: external-secrets.io/v1
@@ -206,7 +208,7 @@ spec:
         type: LoadBalancer
         annotations:
           metallb.io/address-pool: cozystack
-        loadBalancerIP: 192.168.222.103
+        loadBalancerIP: 192.168.222.104
         externalTrafficPolicy: Local
         ports:
           dns:
