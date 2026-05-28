@@ -27,8 +27,10 @@ spec:
       metadata:
         labels:
           reloader.stakater.com/auto: "true"
+      data:
+        tsig-secret: "{{ .tsig_secret_raw | b64enc }}"
   data:
-    - secretKey: tsig-secret
+    - secretKey: tsig_secret_raw
       remoteRef:
         key: /TECHNITIUM/RFC2136_TSIG_SECRET
 ---
@@ -71,7 +73,7 @@ spec:
       - --rfc2136-host=technitium-dns.technitium-dns.svc
       - --rfc2136-port=53
       - --rfc2136-zone=${DOMAIN}
-      - --rfc2136-tsig-keyname=externaldns-key.
+      - --rfc2136-tsig-keyname=external-dns-technitium
       - --rfc2136-tsig-secret-alg=hmac-sha256
       - --rfc2136-tsig-secret=$(RFC2136_TSIG_SECRET)
     env:
