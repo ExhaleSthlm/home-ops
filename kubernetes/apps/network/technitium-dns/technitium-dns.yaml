@@ -253,23 +253,6 @@ spec:
             targetPort: web
 
     ingress:
-      web-api:
-        enabled: true
-        className: tenant-root
-        annotations:
-          nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-        hosts:
-          - host: technitium.${DOMAIN}
-            paths:
-              - path: /api
-                pathType: Prefix
-                service:
-                  identifier: web
-                  port: web
-        tls:
-          - hosts:
-              - technitium.${DOMAIN}
-            secretName: wildcard-le-tls-cert
       web:
         enabled: true
         className: tenant-root
