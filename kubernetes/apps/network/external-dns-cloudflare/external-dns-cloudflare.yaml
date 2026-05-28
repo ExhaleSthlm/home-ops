@@ -61,10 +61,12 @@ spec:
     txtOwnerId: "k8s-external-dns"
     sources:
       - ingress
+    annotationFilter: external-dns.alpha.kubernetes.io/cloudflare-proxied=true
     domainFilters:
-      - ${DOMAIN} # Restrict changes to your domain
+      - myk8s.se # Restrict changes to your domain
     extraArgs:
       - --cloudflare-proxied # If you use Cloudflare proxying (orange cloud)
+      - --ignore-ingress-rules-spec
     env:
       - name: CF_API_TOKEN
         valueFrom:
