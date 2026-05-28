@@ -274,7 +274,9 @@ spec:
 
     persistence:
       config:
-        enabled: false
+        enabled: true
+        type: persistentVolumeClaim
+        existingClaim: technitium-dns
       tls-cert:
         type: secret
         name: wildcard-le-tls-cert
