@@ -28,7 +28,7 @@ spec:
         labels:
           reloader.stakater.com/auto: "true"
       data:
-        tsig-secret: "{{ .tsig_secret_raw | b64enc }}"
+        tsig-secret: "{{ .tsig_secret_raw }}"
   data:
     - secretKey: tsig_secret_raw
       remoteRef:
@@ -58,7 +58,7 @@ spec:
     sources:
       - service
     domainFilters:
-      - ${DOMAIN}
+      - myk8s.se
     annotationFilter: external-dns.alpha.kubernetes.io/technitium=true
     publishInternalServices: true
 
@@ -72,8 +72,8 @@ spec:
     extraArgs:
       - --rfc2136-host=technitium-dns.technitium-dns.svc
       - --rfc2136-port=53
-      - --rfc2136-zone=${DOMAIN}
-      - --rfc2136-tsig-keyname=external-dns-technitium
+      - --rfc2136-zone=myk8s.se
+      - --rfc2136-tsig-keyname=externaldns-key
       - --rfc2136-tsig-secret-alg=hmac-sha256
       - --rfc2136-tsig-secret=$(RFC2136_TSIG_SECRET)
     env:

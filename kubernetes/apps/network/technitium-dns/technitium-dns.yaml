@@ -322,6 +322,7 @@ metadata:
   name: technitium-dns-api
   namespace: technitium-dns
   annotations:
+    external-dns.alpha.kubernetes.io/exclude: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
   ingressClassName: tenant-root
