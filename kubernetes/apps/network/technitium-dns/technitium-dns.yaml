@@ -253,6 +253,23 @@ spec:
             targetPort: web
 
     ingress:
+      web-api:
+        enabled: true
+        className: tenant-root
+        annotations:
+          nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+        hosts:
+          - host: technitium.${DOMAIN}
+            paths:
+              - path: /api
+                pathType: Prefix
+                service:
+                  identifier: web
+                  port: web
+        tls:
+          - hosts:
+              - technitium.${DOMAIN}
+            secretName: wildcard-le-tls-cert
       web:
         enabled: true
         className: tenant-root
@@ -296,6 +313,33 @@ spec:
         name: wildcard-le-tls-cert
         globalMounts:
           - path: /tls
+---
+# Separate ingress for Technitium API endpoints.
+# This avoids forward-auth middleware breaking in-app API calls from the Settings UI.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: technitium-dns-api
+  namespace: technitium-dns
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: tenant-root
+  rules:
+    - host: technitium.${DOMAIN}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: technitium-dns-web
+                port:
+                  number: 5380
+  tls:
+    - hosts:
+        - technitium.${DOMAIN}
+      secretName: wildcard-le-tls-cert
 ---
 # Allow DNS ingress to Technitium pods.
 apiVersion: networking.k8s.io/v1
