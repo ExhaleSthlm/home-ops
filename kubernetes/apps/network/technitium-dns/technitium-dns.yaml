@@ -70,6 +70,20 @@ spec:
       remoteRef:
         key: /TECHNITIUM/DNS_SERVER_DOMAIN
 ---
+# Persistent config volume for Technitium data (/config).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: technitium-dns
+  namespace: technitium-dns
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local
+  resources:
+    requests:
+      storage: 10Gi
+---
 # Technitium DNS (authoritative + recursive + blocklists) in parallel with PowerDNS/Blocky.
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
