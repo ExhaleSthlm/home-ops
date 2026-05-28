@@ -12,6 +12,32 @@ spec:
       storage: 5Gi
   storageClassName: local
 ---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: es-hermes-agent-env
+  namespace: ai-automation
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: infisical
+  target:
+    name: hermes-agent-env
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      metadata:
+        labels:
+          reloader.stakater.com/auto: "true"
+  data:
+    - secretKey: HOME_ASSISTANT_TOKEN
+      remoteRef:
+        key: /HERMES/HOME_ASSISTANT_TOKEN
+    - secretKey: HOME_ASSISTANT_URL
+      remoteRef:
+        key: /HERMES/HOME_ASSISTANT_URL
+---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -57,6 +83,9 @@ spec:
                 value: 0.0.0.0
               - name: HERMES_DASHBOARD_PORT
                 value: "9119"
+            envFrom:
+              - secretRef:
+                  name: hermes-agent-env
             ports:
               - name: dashboard
                 containerPort: 9119
