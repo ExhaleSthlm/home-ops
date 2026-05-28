@@ -65,6 +65,8 @@ spec:
   values:
     controllers:
       hermes-agent:
+        annotations:
+          reloader.stakater.com/auto: "true"
         containers:
           app:
             image:
