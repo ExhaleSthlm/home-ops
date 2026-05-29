@@ -21,6 +21,8 @@
   dependencyDashboardTitle: "Renovate Dashboard 🤖",
   // Create PRs immediately when updates are found.
   prCreation: "immediate",
+  // Recreate updates even if a previous Renovate PR for the same branch was closed.
+  recreateWhen: "always",
   // Do not throttle update PR creation.
   prConcurrentLimit: 0,
   prHourlyLimit: 0,
