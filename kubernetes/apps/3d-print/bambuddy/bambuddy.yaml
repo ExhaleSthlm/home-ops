@@ -306,7 +306,7 @@ spec:
         type: persistentVolumeClaim
         existingClaim: bambuddy-data
         globalMounts:
-          - path: /archive
+          - path: /app/data
       logs:
         type: emptyDir
         globalMounts:
