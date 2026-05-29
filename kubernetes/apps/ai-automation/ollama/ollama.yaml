@@ -130,7 +130,7 @@ metadata:
   namespace: ai-automation
 data:
   #preload-model: "nemotron-3-nano:4b"
-  preload-model: "ministral-3:14b"
+  preload-model: "qwen2.5:7b"
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
@@ -202,10 +202,10 @@ spec:
             resources:
               requests:
                 cpu: "2"
-                memory: 8Gi
+                memory: 10Gi
               limits:
                 cpu: "4"
-                memory: 12Gi
+                memory: 16Gi
 
     service:
       ollama-default:
