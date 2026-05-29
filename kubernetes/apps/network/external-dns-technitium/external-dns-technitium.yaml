@@ -28,7 +28,8 @@ spec:
         labels:
           reloader.stakater.com/auto: "true"
       data:
-        tsig-secret: "{{ .tsig_secret_raw }}"
+        # external-dns RFC2136 expects a base64-encoded TSIG secret.
+        tsig-secret: "{{ .tsig_secret_raw | b64enc }}"
   data:
     - secretKey: tsig_secret_raw
       remoteRef:
