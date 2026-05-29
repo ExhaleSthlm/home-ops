@@ -120,7 +120,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 12Gi
+      storage: 16Gi
   storageClassName: local
 ---
 apiVersion: v1
