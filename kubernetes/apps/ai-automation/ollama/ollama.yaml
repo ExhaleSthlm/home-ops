@@ -202,10 +202,10 @@ spec:
             resources:
               requests:
                 cpu: "2"
-                memory: 10Gi
+                memory: 6Gi
               limits:
                 cpu: "4"
-                memory: 16Gi
+                memory: 8Gi
 
     service:
       ollama-default:
