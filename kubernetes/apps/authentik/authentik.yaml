@@ -196,7 +196,7 @@ spec:
   chart:
     spec:
       chart: authentik
-      version: 2026.2.2
+      version: 2026.5.2
       reconcileStrategy: ChartVersion
       sourceRef:
         kind: HelmRepository
@@ -349,7 +349,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: apply
-              image: ghcr.io/goauthentik/server:2026.2.2
+              image: ghcr.io/goauthentik/server:2026.5.2
               imagePullPolicy: IfNotPresent
               securityContext:
                 allowPrivilegeEscalation: false
