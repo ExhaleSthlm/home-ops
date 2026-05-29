@@ -13,5 +13,18 @@
       matchPackageNames: ["/factory\\.talos\\.dev/"],
       overridePackageName: "ghcr.io/siderolabs/installer",
     },
+    {
+      description: "Allow large major jumps for date/build-style Docker tags",
+      matchDatasources: ["docker"],
+      matchPackageNames: [
+        "nocodb/nocodb",
+        "ghcr.io/jellyfin/jellyfin",
+        "ghcr.io/atuinsh/atuin",
+        "qmcgaw/gluetun",
+      ],
+      // Some images publish calendar/build tags (e.g. 2026052506, 1243).
+      // Raise the guardrail so Renovate can still propose updates.
+      maxMajorIncrement: 999999999,
+    },
   ],
 }
