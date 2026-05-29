@@ -76,11 +76,12 @@ spec:
             args:
               - gateway
               - run
-              - --insecure
             env:
               - name: TZ
                 value: ${TZ}
               - name: HERMES_DASHBOARD
+                value: "1"
+              - name: HERMES_DASHBOARD_INSECURE
                 value: "1"
               - name: HERMES_DASHBOARD_HOST
                 value: 0.0.0.0
