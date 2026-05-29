@@ -76,6 +76,7 @@ spec:
             args:
               - gateway
               - run
+              - --insecure
             env:
               - name: TZ
                 value: ${TZ}
