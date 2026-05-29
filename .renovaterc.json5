@@ -19,6 +19,11 @@
     ":timezone(Europe/Stockholm)",
   ],
   dependencyDashboardTitle: "Renovate Dashboard 🤖",
+  // Create PRs immediately when updates are found.
+  prCreation: "immediate",
+  // Do not throttle update PR creation.
+  prConcurrentLimit: 0,
+  prHourlyLimit: 0,
   suppressNotifications: ["prEditedNotification", "prIgnoreNotification"],
   ignorePaths: ["**/resources/**"],
   flux: {
