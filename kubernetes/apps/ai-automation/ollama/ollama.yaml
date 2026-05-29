@@ -130,7 +130,7 @@ metadata:
   namespace: ai-automation
 data:
   #preload-model: "nemotron-3-nano:4b"
-  preload-model: "ministral-3:8b"
+  preload-model: "ministral-3:14b"
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
