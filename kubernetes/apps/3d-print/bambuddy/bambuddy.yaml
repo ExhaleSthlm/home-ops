@@ -189,7 +189,7 @@ spec:
           app:
             image:
               repository: ghcr.io/maziggy/bambuddy
-              tag: 0.2.4.3-amd64@sha256:0f489025853b1c50dce217c04a50a350e8ef7fab6be0c3180d4c5b201fda9a75
+              tag: 0.2.4.4-amd64@sha256:11056b5376e65539b162f201af674689ada96ab1f97b68d230225146a9948cdc
               pullPolicy: IfNotPresent
             env:
               TZ: ${TZ}
