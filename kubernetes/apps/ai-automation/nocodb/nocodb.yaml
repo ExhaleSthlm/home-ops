@@ -128,7 +128,7 @@ spec:
           main:
             image:
               repository: nocodb/nocodb
-              tag: 2026.05.2@sha256:e6a11bc8d6af7606721f1d6a08785a606796ea2e6e5c7267a53d0096cf3501b1
+              tag: 2026.05.3@sha256:8a263c83889fb9647a48457370ee0d8267776345b1a727535c21f2ab520ac26f
               pullPolicy: IfNotPresent
             envFrom:
               - secretRef:
