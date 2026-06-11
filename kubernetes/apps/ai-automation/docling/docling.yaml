@@ -40,7 +40,7 @@ spec:
           app:
             image:
               repository: ghcr.io/docling-project/docling-serve-cpu
-              tag: v1.22.0@sha256:1f973e7c11ee859ae84c73041e18ee7f5ca66d83870586fcf64a33ba4e08da37
+              tag: v1.22.1@sha256:54a7fa4e22d1d617df119e0208a52b09cf3d8b2010398ed933ee8ce7c5602e95
               pullPolicy: IfNotPresent
             env:
               - name: DOCLING_SERVE_ENABLE_UI
