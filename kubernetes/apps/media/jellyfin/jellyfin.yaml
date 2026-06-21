@@ -88,7 +88,7 @@ spec:
               requests:
                 gpu.intel.com/i915: 2
               limits:
-                memory: 8Gi
+                memory: 16Gi
                 gpu.intel.com/i915: 2
     defaultPodOptions:
       securityContext:
