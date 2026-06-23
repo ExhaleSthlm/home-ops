@@ -225,7 +225,7 @@ spec:
           app:
             image:
               repository: ghcr.io/elfhosted/stremio-server
-              tag: v4.20.8@sha256:24977206eff9aba5c4f62339401dccec7799be06378c35c59d3c5cc451899107
+              tag: v4.20.8@sha256:527cf8bd5f7df2785eeec40e040833ea0cfcb565618649c76f7fbe9f22ac3c3d
               pullPolicy: IfNotPresent
             env:
               TZ: ${TZ}
