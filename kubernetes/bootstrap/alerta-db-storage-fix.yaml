@@ -1,0 +1,9 @@
+# Ensures CNPG "alerta-db" PVC request stays at or above the existing 20Gi capacity.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: alerta-db
+  namespace: tenant-root
+spec:
+  storage:
+    size: 20Gi
