@@ -8,6 +8,15 @@
       overrideDepName: "{{packageName}}",
     },
     {
+      description: "Ignore private or non-resolvable ElfHosted streamio images",
+      matchDatasources: ["docker"],
+      matchPackageNames: [
+        "ghcr.io/elfhosted/stremio-web",
+        "ghcr.io/elfhosted/flixio-api",
+      ],
+      enabled: false,
+    },
+    {
       description: "Override Talos Installer Package Name",
       matchDatasources: ["docker"],
       matchPackageNames: ["/factory\\.talos\\.dev/"],
