@@ -98,7 +98,7 @@ spec:
           ml-api:
             image:
               repository: ghcr.io/gabe565/obico/ml-api
-              tag: latest@sha256:d46a33bc002154387f4ff997fd8f710df6429ec562568e5558db16573b782fde
+              tag: latest@sha256:0b8c63f38e6c1cc48e080297f488619fcc5f1bf01f49d546d25a080f6501cac4
               pullPolicy: IfNotPresent
             env:
               DEBUG: "True"
