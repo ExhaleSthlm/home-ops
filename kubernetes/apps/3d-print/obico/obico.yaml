@@ -41,7 +41,7 @@ spec:
           web:
             image:
               repository: ghcr.io/gabe565/obico/web
-              tag: latest@sha256:0755820036e81f77048a7b90da45bb5ff64921276f13f6f65a3709cae1f5d376
+              tag: latest@sha256:7d9f1387eefdc46c2b8e678d4f77a74da329cb473ace1ad050367e7f425ad48b
               pullPolicy: IfNotPresent
             env:
               TZ: ${TZ}
