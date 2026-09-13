@@ -330,11 +330,13 @@ metadata:
     app.kubernetes.io/instance: authentik
 spec:
   schedule: "*/15 * * * *"
+  startingDeadlineSeconds: 300
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 2
   jobTemplate:
     spec:
+      activeDeadlineSeconds: 900
       backoffLimit: 2
       template:
         metadata:

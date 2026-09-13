@@ -130,8 +130,15 @@ spec:
               - |
                 find /home/node/.openclaw \
                   -mindepth 1 \
-                  ! -path /home/node/.openclaw/openclaw.json \
                   -exec chown -R 1000:1000 {} +
+                rm -f \
+                  /home/node/.openclaw/openclaw.json.last-good \
+                  /home/node/.openclaw/openclaw.json.bak* \
+                  /home/node/.openclaw/openclaw.json.clobbered.* \
+                  /home/node/.openclaw/openclaw.json.*.tmp
+                cp /config/openclaw.json /home/node/.openclaw/openclaw.json
+                chown 1000:1000 /home/node/.openclaw/openclaw.json
+                chmod 0600 /home/node/.openclaw/openclaw.json
             securityContext:
               runAsUser: 0
               runAsGroup: 0
@@ -247,6 +254,5 @@ spec:
         type: secret
         name: openclaw-env
         globalMounts:
-          - path: /home/node/.openclaw/openclaw.json
-            subPath: openclaw.json
+          - path: /config
             readOnly: true
