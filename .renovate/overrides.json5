@@ -13,6 +13,8 @@
       matchPackageNames: [
         "ghcr.io/elfhosted/stremio-web",
         "ghcr.io/elfhosted/flixio-api",
+        "ghcr.io/elfhosted/stremio-server",
+        "ghcr.io/elfhosted/aiostreams-v1",
       ],
       enabled: false,
     },
