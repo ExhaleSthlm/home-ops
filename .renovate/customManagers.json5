@@ -3,6 +3,17 @@
   customManagers: [
     {
       customType: "regex",
+      description: "Update the Cloudflared image nested in a Flux ResourceSet",
+      managerFilePatterns: [
+        "/(^|/)kubernetes/apps/network/cloudflared/cloudflared\\.yaml$/",
+      ],
+      matchStrings: [
+        "repository:\\s+(?<depName>docker\\.io/cloudflare/cloudflared)\\s*\\n\\s*tag:\\s+(?<currentValue>[^\\s@]+)@(?<currentDigest>sha256:[a-f0-9]{64})",
+      ],
+      datasourceTemplate: "docker",
+    },
+    {
+      customType: "regex",
       description: "Process annotated dependencies",
       managerFilePatterns: [
         "/\\.env(?:\\.j2)?$/",
