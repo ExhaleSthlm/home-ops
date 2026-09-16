@@ -75,7 +75,7 @@ spec:
     replicaCount: 2
     image:
       repository: docker.io/cloudflare/cloudflared
-      tag: 2025.11.1@sha256:89ee50efb1e9cb2ae30281a8a404fed95eb8f02f0a972617526f8c5b417acae2
+      tag: 2026.9.1@sha256:b269e8abd07a5bf6f3f4be65d5050b2174eca89c56a0241a8ff32a16aec454e4
       pullPolicy: IfNotPresent
   install:
     remediation:
