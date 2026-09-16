@@ -3,7 +3,7 @@
   customManagers: [
     {
       customType: "regex",
-      description: "Update the Cloudflared image nested in a Flux ResourceSet",
+      description: "Update the Cloudflared image in its HelmRelease",
       managerFilePatterns: [
         "/(^|/)kubernetes/apps/network/cloudflared/cloudflared\\.yaml$/",
       ],

@@ -1,91 +1,85 @@
-# ResourceSet for deploying Cloudflared.
+# Keep former ResourceSet children during its deletion; Flux apps now owns them.
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/fluxcd.controlplane.io/resourceset_v1.json
-apiVersion: fluxcd.controlplane.io/v1
-kind: ResourceSet
+apiVersion: v1
+kind: Namespace
 metadata:
   name: cloudflared
-  namespace: cozy-fluxcd
+  labels:
+    app.kubernetes.io/name: cloudflared
   annotations:
-    fluxcd.controlplane.io/reconcile: "enabled"
-    fluxcd.controlplane.io/reconcileEvery: "30m"
-    fluxcd.controlplane.io/reconcileTimeout: "5m"
+    fluxcd.controlplane.io/prune: disabled
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: cloudflare
+  namespace: cozy-fluxcd
+  labels:
+    app.kubernetes.io/name: cloudflared
+  annotations:
+    fluxcd.controlplane.io/prune: disabled
 spec:
-  commonMetadata:
-    labels:
-      app.kubernetes.io/name: cloudflared
-
-  resources:
-    # Cloudflared namespace.
-    - apiVersion: v1
-      kind: Namespace
+  url: https://cloudflare.github.io/helm-charts
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: es-cloudflared-cloudflare-tunnel-remote
+  namespace: cloudflared
+  labels:
+    app.kubernetes.io/name: cloudflared
+  annotations:
+    fluxcd.controlplane.io/prune: disabled
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: infisical
+  target:
+    # This secret name is automatically fetched by the Cloudflared helm chart.
+    # Template: [namespace]-cloudflare-tunnel-remote
+    name: cloudflared-cloudflare-tunnel-remote
+    creationPolicy: Owner
+    template:
       metadata:
-        name: cloudflared
         labels:
-          app.kubernetes.io/name: cloudflared
-
-    # Cloudflared Helm repository.
-    - apiVersion: source.toolkit.fluxcd.io/v1
-      kind: HelmRepository
-      metadata:
+          reloader.stakater.com/auto: "true"
+  data:
+    - secretKey: tunnelToken
+      remoteRef:
+        key: /CLOUDFLARE/TUNNEL_TOKEN
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cloudflared
+  namespace: cloudflared
+  labels:
+    app.kubernetes.io/name: cloudflared
+  annotations:
+    fluxcd.controlplane.io/prune: disabled
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: cloudflare-tunnel-remote
+      version: "0.1.2"
+      sourceRef:
+        kind: HelmRepository
         name: cloudflare
         namespace: cozy-fluxcd
-      spec:
-        url: https://cloudflare.github.io/helm-charts
-
-    # Cloudflared ExternalSecret.
-    - apiVersion: external-secrets.io/v1
-      kind: ExternalSecret
-      metadata:
-        name: es-cloudflared-cloudflare-tunnel-remote
-        namespace: cloudflared
-      spec:
-        refreshInterval: 1h
-        secretStoreRef:
-          kind: ClusterSecretStore
-          name: infisical
-        target:
-          # This secret name is automatically fetched by the Cloudflared helm chart.
-          # Template: [namespace]-cloudflare-tunnel-remote
-          name: cloudflared-cloudflare-tunnel-remote
-          creationPolicy: Owner
-          template:
-            metadata:
-              labels:
-                reloader.stakater.com/auto: "true"
-        data:
-          - secretKey: tunnelToken
-            remoteRef:
-              key: /CLOUDFLARE/TUNNEL_TOKEN
-
-    # Cloudflared helm release.
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      metadata:
-        name: cloudflared
-        namespace: cloudflared
-      spec:
-        interval: 10m
-        chart:
-          spec:
-            chart: cloudflare-tunnel-remote
-            version: "0.1.2"
-            sourceRef:
-              kind: HelmRepository
-              name: cloudflare
-              namespace: cozy-fluxcd
-            interval: 10m
-        values:
-          podAnnotations:
-            reloader.stakater.com/auto: "true"
-          replicaCount: 2
-          image:
-            repository: docker.io/cloudflare/cloudflared
-            tag: 2025.11.1@sha256:89ee50efb1e9cb2ae30281a8a404fed95eb8f02f0a972617526f8c5b417acae2
-            pullPolicy: IfNotPresent
-        install:
-          remediation:
-            retries: 3
-        upgrade:
-          remediation:
-            retries: 3
+      interval: 10m
+  values:
+    podAnnotations:
+      reloader.stakater.com/auto: "true"
+    replicaCount: 2
+    image:
+      repository: docker.io/cloudflare/cloudflared
+      tag: 2025.11.1@sha256:89ee50efb1e9cb2ae30281a8a404fed95eb8f02f0a972617526f8c5b417acae2
+      pullPolicy: IfNotPresent
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
