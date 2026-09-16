@@ -55,6 +55,7 @@ spec:
     txtPrefix: local-
     sources:
       - service
+    annotationPrefix: external-dns.alpha.kubernetes.io/
     domainFilters:
       - ${DOMAIN} # Restrict changes to your domain
     annotationFilter: external-dns.alpha.kubernetes.io/internal=true

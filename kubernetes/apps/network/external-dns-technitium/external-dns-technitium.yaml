@@ -58,6 +58,7 @@ spec:
     txtPrefix: technitium-
     sources:
       - service
+    annotationPrefix: external-dns.alpha.kubernetes.io/
     domainFilters:
       - myk8s.se
     annotationFilter: external-dns.alpha.kubernetes.io/technitium=true

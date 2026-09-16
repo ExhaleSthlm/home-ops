@@ -57,10 +57,11 @@ spec:
       reloader.stakater.com/auto: "true"
 
     provider: cloudflare # Supports AWS, Cloudflare, Google, DigitalOcean, etc.
-    policy: sync # Keep DNS records in sync with K8s Ingress
+    policy: upsert-only # Never delete Cloudflare records during reconciliation.
     txtOwnerId: "k8s-external-dns"
     sources:
       - ingress
+    annotationPrefix: external-dns.alpha.kubernetes.io/
     annotationFilter: external-dns.alpha.kubernetes.io/cloudflare-proxied=true
     domainFilters:
       - myk8s.se # Restrict changes to your domain
