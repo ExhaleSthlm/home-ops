@@ -31,6 +31,7 @@ metadata:
   namespace: media
 spec:
   interval: 1h
+  timeout: 30m
   chartRef:
     kind: OCIRepository
     name: app-template
