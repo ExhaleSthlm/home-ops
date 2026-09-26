@@ -167,7 +167,7 @@ spec:
           app:
             image:
               repository: docker.io/technitium/dns-server
-              tag: "15.5.0@sha256:a7ed6d5c48270e17a1bf8db982c4117bc0ccc32a59bf590d4ff20b1895efec4c"
+              tag: "15.5.1@sha256:8c3e736c906d54f3bf762bf16fe406f6e35aa9352a9959733968aae39866b9ab"
               pullPolicy: IfNotPresent
             env:
               - name: TZ
