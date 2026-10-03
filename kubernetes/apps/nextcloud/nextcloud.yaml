@@ -82,7 +82,7 @@ spec:
         key: /NEXTCLOUD/S3_BUCKET
     - secretKey: s3-hostname
       remoteRef:
-        key: /NEXTCLOUD/S3_HOSTNAME
+        key: /GARAGE/ENDPOINT
     - secretKey: admin-email
       remoteRef:
         key: /NEXTCLOUD/ADMIN_EMAIL
