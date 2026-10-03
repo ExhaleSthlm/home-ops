@@ -16,6 +16,11 @@ data:
         action:
           type: snapshot
       - conditions:
+          pvcLabels:
+            app: qdrant
+        action:
+          type: snapshot
+      - conditions:
           nfs: {}
         action:
           type: skip
