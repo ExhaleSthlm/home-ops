@@ -1,0 +1,108 @@
+---
+# Back up application state while excluding databases, NAS-backed media,
+# model data, and caches that have separate backup paths or can be rebuilt.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-backup-resource-policy
+  namespace: cozy-velero
+data:
+  policies.yaml: |
+    version: v1
+    volumePolicies:
+      - conditions:
+          nfs: {}
+        action:
+          type: skip
+      - conditions:
+          csi:
+            driver: linstor.csi.linbit.com
+        action:
+          type: snapshot
+    namespacedFilterPolicies:
+      - namespaces:
+          - 3d-print
+        resourceFilters:
+          - kinds: [PersistentVolumeClaim]
+            names: [obico-data]
+          - kinds: ["*"]
+      - namespaces:
+          - ai-automation
+        resourceFilters:
+          - kinds: [PersistentVolumeClaim]
+            names:
+              - graphiti-data
+              - hermes-agent-data
+              - n8n-data
+              - open-webui
+              - openclaw-data
+              - qdrant-storage-qdrant-0
+          - kinds: ["*"]
+      - namespaces:
+          - atuin
+        resourceFilters:
+          - kinds: [PersistentVolumeClaim]
+            names: [atuin-config]
+          - kinds: ["*"]
+      - namespaces:
+          - media
+        resourceFilters:
+          - kinds: [PersistentVolumeClaim]
+            names:
+              - aiostreams-config
+              - autobrr-config
+              - bazarr
+              - jellyfin-config
+              - jellyseerr-config
+              - plex-config
+              - prowlarr-config
+              - qbittorrent-config
+              - radarr-config
+              - recyclarr
+              - sonarr-config
+              - streamio-flixio-data
+              - streamio-server-config
+          - kinds: ["*"]
+      - namespaces:
+          - nextcloud
+        resourceFilters:
+          - kinds: [PersistentVolumeClaim]
+            names: [nextcloud-data]
+          - kinds: ["*"]
+      - namespaces:
+          - peanut
+        resourceFilters:
+          - kinds: [PersistentVolumeClaim]
+            names: [peanut-config]
+          - kinds: ["*"]
+      - namespaces:
+          - technitium-dns
+        resourceFilters:
+          - kinds: [PersistentVolumeClaim]
+            names: [technitium-dns]
+          - kinds: ["*"]
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: apps-daily
+  namespace: cozy-velero
+spec:
+  schedule: "0 3 * * *"
+  template:
+    includedNamespaces:
+      - 3d-print
+      - ai-automation
+      - atuin
+      - media
+      - nextcloud
+      - peanut
+      - technitium-dns
+    resourcePolicy:
+      kind: ConfigMap
+      name: app-backup-resource-policy
+    storageLocation: default
+    snapshotVolumes: true
+    snapshotMoveData: true
+    ttl: 336h
+    itemOperationTimeout: 24h
