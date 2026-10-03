@@ -63,6 +63,12 @@ metadata:
   namespace: 3d-print
 spec:
   instances: 2
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: postgres-backups
+        serverName: bambuddy-db
   affinity:
     enablePodAntiAffinity: true
     topologyKey: kubernetes.io/hostname

@@ -96,6 +96,12 @@ metadata:
   namespace: nextcloud
 spec:
   instances: 2
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: postgres-backups
+        serverName: nextcloud-db
   affinity:
     enablePodAntiAffinity: true
     topologyKey: kubernetes.io/hostname

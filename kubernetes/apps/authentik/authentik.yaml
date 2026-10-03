@@ -167,6 +167,12 @@ metadata:
   namespace: authentik
 spec:
   instances: 2
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: postgres-backups
+        serverName: authentik-db
   affinity:
     enablePodAntiAffinity: true
     topologyKey: kubernetes.io/hostname
