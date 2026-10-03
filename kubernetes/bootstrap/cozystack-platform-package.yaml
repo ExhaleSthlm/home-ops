@@ -15,7 +15,7 @@ spec:
         backupStorage:
           provisionBucket: false
           bucketName: cozy-backups
-          endpoint: http://192.168.222.13:30188
+          endpoint: ${GARAGE_ENDPOINT}
           region: garage
           forcePathStyle: true
           systemSecretName: cozy-backups-s3

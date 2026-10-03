@@ -18,7 +18,7 @@ spec:
       data:
         accessKey: "{{ .access_key }}"
         secretKey: "{{ .secret_key }}"
-        endpoint: http://192.168.222.13:30188
+        endpoint: ${GARAGE_ENDPOINT}
         bucketName: cozy-backups
   data:
     - secretKey: access_key
