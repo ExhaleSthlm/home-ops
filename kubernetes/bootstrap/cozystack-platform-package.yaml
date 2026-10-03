@@ -12,6 +12,15 @@ spec:
           oidc:
             enabled: false
             keycloakExtraRedirectUri: ""
+        backupStorage:
+          provisionBucket: false
+          bucketName: cozy-backups
+          endpoint: http://192.168.222.13:30188
+          region: garage
+          forcePathStyle: true
+          systemSecretName: cozy-backups-s3
+          systemNamespaces:
+            - cozy-velero
         branding: {}
         bundles:
           disabledPackages: []
