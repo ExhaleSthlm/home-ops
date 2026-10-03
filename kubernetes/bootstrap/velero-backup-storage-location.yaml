@@ -43,5 +43,72 @@ spec:
     bucket: velero
   config:
     region: garage
-    s3Url: http://192.168.222.13:30188
+    s3Url: ${GARAGE_ENDPOINT}
     s3ForcePathStyle: "true"
+---
+# Keep KubeVirt backups isolated from general Velero backups.
+# yaml-language-server: $schema=https://raw.githubusercontent.com/external-secrets/external-secrets/refs/heads/main/config/crds/bases/external-secrets.io_externalsecrets.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: es-kubevirt-backup-credentials
+  namespace: cozy-velero
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: infisical
+  target:
+    name: kubevirt-backup-credentials
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      data:
+        cloud: |
+          [default]
+          aws_access_key_id={{ .access_key }}
+          aws_secret_access_key={{ .secret_key }}
+  data:
+    - secretKey: access_key
+      remoteRef:
+        key: /KUBEVIRT/S3_ACCESS_KEY
+    - secretKey: secret_key
+      remoteRef:
+        key: /KUBEVIRT/S3_SECRET_KEY
+---
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: kubevirt-backups
+  namespace: cozy-velero
+spec:
+  provider: aws
+  credential:
+    name: kubevirt-backup-credentials
+    key: cloud
+  objectStorage:
+    bucket: kubevirt-backups
+  config:
+    region: garage
+    s3Url: ${GARAGE_ENDPOINT}
+    s3ForcePathStyle: "true"
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: haos-daily
+  namespace: cozy-velero
+spec:
+  schedule: "0 2 * * *"
+  template:
+    includedNamespaces:
+      - home-automation
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: home-assistant
+    includeClusterResources: false
+    storageLocation: kubevirt-backups
+    snapshotVolumes: true
+    snapshotMoveData: true
+    ttl: 720h
+    itemOperationTimeout: 24h
