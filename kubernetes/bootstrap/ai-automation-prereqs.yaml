@@ -231,7 +231,7 @@ spec:
     - to:
         - podSelector: {} # any pod in the same namespace
 ---
-# NetworkPolicy: allow Minio/MinIO S3 access for pods in ai-automation.
+# NetworkPolicy: allow S3 access on the legacy MinIO and current Garage ports.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -247,6 +247,8 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
+        - protocol: TCP
+          port: 30188
 ---
 # NetworkPolicy: allow Hermes Agent egress to Home Assistant service.
 # Purpose: Let Hermes call Home Assistant API on TCP/8123 across namespaces.
