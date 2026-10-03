@@ -4,6 +4,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: jellyfin-config
   namespace: media
+  labels:
+    backup.myk8s.se/volume: "true"
 spec:
   accessModes: ["ReadWriteOnce"]
   resources:

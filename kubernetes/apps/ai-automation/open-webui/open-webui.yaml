@@ -70,6 +70,8 @@ spec:
       enabled: true
       size: 5Gi
       storageClass: local
+      labels:
+        backup.myk8s.se/volume: "true"
       accessModes:
         - ReadWriteOnce
 

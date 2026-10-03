@@ -4,6 +4,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: streamio-server-config
   namespace: media
+  labels:
+    backup.myk8s.se/volume: "true"
 spec:
   accessModes: ["ReadWriteOnce"]
   resources:
@@ -16,6 +18,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: aiostreams-config
   namespace: media
+  labels:
+    backup.myk8s.se/volume: "true"
 spec:
   accessModes: ["ReadWriteOnce"]
   resources:
@@ -28,6 +32,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: streamio-flixio-data
   namespace: media
+  labels:
+    backup.myk8s.se/volume: "true"
 spec:
   accessModes: ["ReadWriteOnce"]
   resources:

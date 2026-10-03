@@ -14,6 +14,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: atuin-config
   namespace: atuin
+  labels:
+    backup.myk8s.se/volume: "true"
 spec:
   accessModes: ["ReadWriteOnce"]
   resources:

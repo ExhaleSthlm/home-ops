@@ -60,6 +60,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: n8n-data
   namespace: ai-automation
+  labels:
+    backup.myk8s.se/volume: "true"
 spec:
   accessModes: ["ReadWriteOnce"]
   resources:

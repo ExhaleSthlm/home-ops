@@ -3,6 +3,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: obico-data
   namespace: 3d-print
+  labels:
+    backup.myk8s.se/volume: "true"
 spec:
   accessModes:
     - ReadWriteOnce

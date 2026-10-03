@@ -13,6 +13,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: peanut-config
   namespace: peanut
+  labels:
+    backup.myk8s.se/volume: "true"
 spec:
   accessModes: ["ReadWriteOnce"]
   resources:

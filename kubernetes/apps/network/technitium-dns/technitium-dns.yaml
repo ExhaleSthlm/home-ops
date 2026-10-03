@@ -76,6 +76,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: technitium-dns
   namespace: technitium-dns
+  labels:
+    backup.myk8s.se/volume: "true"
 spec:
   accessModes:
     - ReadWriteOnce

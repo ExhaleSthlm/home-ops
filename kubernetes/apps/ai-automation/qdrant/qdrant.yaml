@@ -49,6 +49,8 @@ spec:
         - ReadWriteOnce
       size: 10Gi
       storageClassName: local
+      additionalLabels:
+        backup.myk8s.se/volume: "true"
 
     resources:
       requests:

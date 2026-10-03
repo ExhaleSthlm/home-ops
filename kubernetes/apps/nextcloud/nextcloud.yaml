@@ -133,6 +133,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: nextcloud-data
   namespace: nextcloud
+  labels:
+    backup.myk8s.se/volume: "true"
 spec:
   accessModes: ["ReadWriteOnce"]
   resources:

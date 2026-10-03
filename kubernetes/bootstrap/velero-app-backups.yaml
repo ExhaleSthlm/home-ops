@@ -11,6 +11,11 @@ data:
     version: v1
     volumePolicies:
       - conditions:
+          pvcLabels:
+            backup.myk8s.se/volume: "true"
+        action:
+          type: snapshot
+      - conditions:
           nfs: {}
         action:
           type: skip
@@ -18,69 +23,7 @@ data:
           csi:
             driver: linstor.csi.linbit.com
         action:
-          type: snapshot
-    namespacedFilterPolicies:
-      - namespaces:
-          - 3d-print
-        resourceFilters:
-          - kinds: [PersistentVolumeClaim]
-            names: [obico-data]
-          - kinds: ["*"]
-      - namespaces:
-          - ai-automation
-        resourceFilters:
-          - kinds: [PersistentVolumeClaim]
-            names:
-              - graphiti-data
-              - hermes-agent-data
-              - n8n-data
-              - open-webui
-              - openclaw-data
-              - qdrant-storage-qdrant-0
-          - kinds: ["*"]
-      - namespaces:
-          - atuin
-        resourceFilters:
-          - kinds: [PersistentVolumeClaim]
-            names: [atuin-config]
-          - kinds: ["*"]
-      - namespaces:
-          - media
-        resourceFilters:
-          - kinds: [PersistentVolumeClaim]
-            names:
-              - aiostreams-config
-              - autobrr-config
-              - bazarr
-              - jellyfin-config
-              - jellyseerr-config
-              - plex-config
-              - prowlarr-config
-              - qbittorrent-config
-              - radarr-config
-              - recyclarr
-              - sonarr-config
-              - streamio-flixio-data
-              - streamio-server-config
-          - kinds: ["*"]
-      - namespaces:
-          - nextcloud
-        resourceFilters:
-          - kinds: [PersistentVolumeClaim]
-            names: [nextcloud-data]
-          - kinds: ["*"]
-      - namespaces:
-          - peanut
-        resourceFilters:
-          - kinds: [PersistentVolumeClaim]
-            names: [peanut-config]
-          - kinds: ["*"]
-      - namespaces:
-          - technitium-dns
-        resourceFilters:
-          - kinds: [PersistentVolumeClaim]
-            names: [technitium-dns]
-          - kinds: ["*"]
+          type: skip
 ---
 apiVersion: velero.io/v1
 kind: Schedule

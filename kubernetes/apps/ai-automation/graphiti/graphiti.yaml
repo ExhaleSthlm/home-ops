@@ -4,6 +4,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: graphiti-data
   namespace: ai-automation
+  labels:
+    backup.myk8s.se/volume: "true"
 spec:
   accessModes: ["ReadWriteOnce"]
   resources:
