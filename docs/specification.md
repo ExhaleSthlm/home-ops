@@ -168,17 +168,18 @@ Public Github site that describes the cluster. ✅
 - Renovate - Cluster dependency management (on GitHub) ✅
 - Reloader - Rolling upgrades on ConfigMap/Secret changes (in cluster) ✅
 - Reflector - Copies secrets between namespaces (mainly wildcard Lets Encrypt Cert). ✅
+- tuppr - Talos and kubernetes version management
 
 #### Storage/Networking
 
-- Minio (on nas) For backups. ✅
-- S3 Manager (Part of Cozystack, good thing for managing Minio buckets since Minio GUI isn't working)
+- Garage (on NAS) For backups. ✅
+- Garage UI (on NAS) ✅
 
 #### Web Publishing
 
 - External-DNS - Operator, Manage DNS names against CloudFlare ✅
 - Cloudflared - Cloudflare Tunnel ✅
-- Authentik - Authentication of basically all apps (may be some exceptions.) ☑️
+- Authentik - Authentication of basically all apps (may be some exceptions.) ✅
 - Cloudflare DDNS - Updates Cloudflare DNS with public IP Address ✅
 
 #### Media
@@ -194,13 +195,13 @@ Public Github site that describes the cluster. ✅
 - QBitTorrent with GlueTun for NordVPN ✅
 - Autobrr - Allows for better seeding ✅
 - Sabnzbd with GlueTun for NordVPN (new)
-- Streamio Web + Flixio
-- Streamio Server (behind GlueTun/NordVPN)
+- Streamio Web + Flixio ☑️
+- Streamio Server (behind GlueTun/NordVPN) ☑️
 - AIOStreams (behind GlueTun/NordVPN)
 
 #### Virtual Machines
 
-- Kubevirt Manager (https://github.com/kubevirt-manager) - Will I need this?
+- Kubevirt Manager (https://github.com/kubevirt-manager)
 
 #### PXE Boot
 
@@ -208,43 +209,48 @@ Public Github site that describes the cluster. ✅
 
 #### Backup
 
-- Velero configuration (https://cozystack.io/docs/kubernetes/backup-and-recovery/)
+- Velero configuration (https://cozystack.io/docs/kubernetes/backup-and-recovery/) (Backup to S3 (Garage) on NAS) ✅
 - Velero UI - UI for Velero ✅
-- CNPG database backups to Minio
-
-#### Maybe in the future
-
-- InfluxDB (Currently included in HAOS VM, Will Clickhouse do?)
+- CNPG database backups (Backup to S3 (Garage) on NAS) ✅
 
 #### Startpage
 
 - Homepage (http://gethomepage.dev/)
 
 #### Development Server
-
-- Code-Server
-  - Atuin client.
-  - Helm
-  - Talosctl
-  - Talm
-  - KubeCtl
-  - VirtCtl
-  - etcdctl
-  - Flux CLI
-  - Cilium CLI
-  - VSCode GitOps VSCode extension
-  - Git
-  - VSCode Yaml Extension
-  - VSCode Kubernetes Extension
-  - VSCode SQL Tools with Postgres and Maria DB drivers
-  - VSCode HomeAssistant extension
-  - More???
+- Coder
+- VS Code Web
+  - WS Code Web Template Kubernetes
+    - Atuin client.
+    - Helm
+    - Talosctl
+    - Talm
+    - KubeCtl
+    - VirtCtl
+    - etcdctl
+    - Flux CLI
+    - Cilium CLI
+    - VSCode GitOps VSCode extension
+    - Git
+    - VSCode Yaml Extension
+    - VSCode Kubernetes Extension
+    - VSCode SQL Tools with Postgres and Maria DB drivers
+    - VSCode HomeAssistant extension
+  - WS Code Web Template ESP32
+    - ESP-IDF
+    - ESP-Arduino
+    - PIOArduino
+    - ESPHome
 
 #### DNS/Ad Blocking ✅
 
 - Blocky + Redis (Sync) + Postgres (logging), DNS request over DoH over NordVPN (GlueTun). ✅
 - Blocky Grafana Postgres Datasource ✅
 - Blocky Grafana Dashboards ✅
+- Technitium (Internal DNS) ☑️ - Needs configuration
+- PowerDNS + PowerDNS Admin ❌ - Should be replaced by Technitium
+- External DNS (External - Cloudflare) ✅
+- External DNS (Internal - Technitium) ☑️ - Needs Configuration
 
 #### AI Workflow/Automation engine
 - n8n - Automation against different services with workflow and AI Agents ✅
@@ -253,8 +259,8 @@ Public Github site that describes the cluster. ✅
 - kMCP - Platform for running MCP-servers in Kubernetes (https://kagent.dev/docs/kmcp) ✅
 - deepeval-mcp - Agent evaluation platform. ✅
 - docling-serve - Document conversion for RAG (https://github.com/docling-project/docling-serve) ✅
-- nocodb - spreadsheet like database.
-- Product for agent long time memory? Letta?
+- nocodb - spreadsheet like database. ✅
+- Ollama
 
 ##### Kubernetes Agentic AI MCP Servers
 - Flux CD MCP Server - https://fluxcd.io/blog/2025/05/ai-assisted-gitops/
@@ -266,17 +272,14 @@ Public Github site that describes the cluster. ✅
 
 #### Home Automation
 
-- Home Assistant OS (kubevirt) - Virtual Machine - currently on truenas-stor.
-- Zigbee2MQTT (currently on HAOS VM)
-- ESP Home
+- Home Assistant OS (kubevirt) - Virtual Machine. ✅
 - Frigate
   [Helm Chart](https://github.com/blakeblackshear/blakeshome-charts/tree/master/charts/frigate)
-- NodeRed (currently on HAOS VM)
 
 #### 3D Printing
 
-- Mainsail
-- Obico
+- Bambuddy ☑️ - Needs configuration
+- Obico ✅
   https://github.com/gabe565/home-ops/tree/main/kubernetes/gabernetes/apps/obico
 
 #### Management/Security
