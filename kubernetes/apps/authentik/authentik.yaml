@@ -180,7 +180,7 @@ spec:
 
   storage:
     # Set your storageClass if needed (commented out to use cluster default)
-    size: 15Gi
+    size: 30Gi
 
   bootstrap:
     initdb:
