@@ -157,6 +157,11 @@ spec:
     - to:
         - podSelector: {}
     - to:
+        - ipBlock:
+            cidr: 10.96.0.1/32
+      ports:
+        - { protocol: TCP, port: 443 }
+    - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ai-gateway
