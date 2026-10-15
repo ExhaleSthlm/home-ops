@@ -171,6 +171,33 @@ spec:
             - port: "6443"
               protocol: TCP
 ---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-coder-kube-apiserver
+  namespace: coder
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: coder
+  egress:
+    - toServices:
+        - k8sService:
+            namespace: default
+            serviceName: kubernetes
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "6443"
+              protocol: TCP
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
