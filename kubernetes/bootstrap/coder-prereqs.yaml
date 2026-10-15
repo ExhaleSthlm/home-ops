@@ -162,6 +162,13 @@ spec:
       ports:
         - { protocol: TCP, port: 443 }
     - to:
+        - ipBlock:
+            cidr: 192.168.222.21/32
+        - ipBlock:
+            cidr: 192.168.222.22/32
+      ports:
+        - { protocol: TCP, port: 6443 }
+    - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ai-gateway
