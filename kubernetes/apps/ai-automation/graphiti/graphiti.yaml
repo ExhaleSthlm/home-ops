@@ -93,7 +93,7 @@ spec:
           app:
             image:
               repository: zepai/knowledge-graph-mcp
-              tag: 1.1.0@sha256:a2536b6d59b4afb359a13aeaa4a9d2f4db195af14231168efda6a3d166228956
+              tag: 1.1.1@sha256:873abc79dbb36c98df3b5d6c59af598fcd53bd31c6629ad0ab1efb85ddd92c29
               pullPolicy: IfNotPresent
             env:
               - name: CONFIG_PATH
