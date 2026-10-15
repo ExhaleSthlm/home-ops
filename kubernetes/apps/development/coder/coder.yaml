@@ -29,7 +29,7 @@ spec:
     coder:
       image:
         repo: ghcr.io/coder/coder
-        tag: v2.36.7@sha256:e8b2743529aea6a1e77bba764c8ec4a04dec65d27ca9caa0ec0b2dbcd3db0565
+        tag: v2.38.0@sha256:38a4cfc548b096484d6d1743e5f1a5af18301ed9a7ffde5150663822f9887026
         pullPolicy: IfNotPresent
       annotations:
         reloader.stakater.com/auto: "true"
