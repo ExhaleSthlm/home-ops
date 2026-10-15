@@ -134,6 +134,15 @@ spec:
       ports:
         - { protocol: TCP, port: 8000 }
         - { protocol: TCP, port: 5432 }
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: coder
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: coder-db
+      ports:
+        - { protocol: TCP, port: 5432 }
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
