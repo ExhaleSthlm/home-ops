@@ -1,0 +1,85 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd/helm-controller/main/config/crd/bases/helm.toolkit.fluxcd.io_helmreleases.yaml
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: coder
+  namespace: coder
+  annotations:
+    lineage.cozystack.io/ignore: "true"
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: coder
+      version: 2.36.7
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: coder
+        namespace: cozy-fluxcd
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    coder:
+      image:
+        repo: ghcr.io/coder/coder
+        tag: v2.36.7@sha256:e8b2743529aea6a1e77bba764c8ec4a04dec65d27ca9caa0ec0b2dbcd3db0565
+        pullPolicy: IfNotPresent
+      annotations:
+        reloader.stakater.com/auto: "true"
+      podAnnotations:
+        reloader.stakater.com/auto: "true"
+      env:
+        - { name: CODER_ACCESS_URL, value: "https://coder.${DOMAIN}" }
+        - { name: CODER_OIDC_ISSUER_URL, value: "https://auth.${DOMAIN}/application/o/coder/" }
+        - { name: CODER_OIDC_SCOPES, value: "openid,profile,email,offline_access" }
+        - { name: CODER_OIDC_SIGN_IN_TEXT, value: "Sign in with Authentik" }
+        - { name: CODER_OIDC_ALLOW_SIGNUPS, value: "true" }
+        - { name: CODER_DISABLE_PASSWORD_AUTH, value: "false" }
+        - { name: CODER_PROMETHEUS_ENABLE, value: "true" }
+        - { name: CODER_TELEMETRY_ENABLE, value: "false" }
+      envFrom:
+        - secretRef:
+            name: coder-db-creds
+        - secretRef:
+            name: coder-oidc
+      serviceAccount:
+        workspacePerms: false
+        enableDeployments: false
+        workspaceNamespaces:
+          - name: coder-workspaces
+            workspacePerms: true
+            enableDeployments: true
+      service:
+        type: ClusterIP
+        annotations:
+          lineage.cozystack.io/ignore: "true"
+          external-dns.alpha.kubernetes.io/internal: "true"
+          external-dns.alpha.kubernetes.io/technitium: "true"
+          external-dns.alpha.kubernetes.io/hostname: coder.${DOMAIN}
+          external-dns.alpha.kubernetes.io/target: cluster-ingress.${DOMAIN}
+      ingress:
+        enable: true
+        className: tenant-root
+        host: coder.${DOMAIN}
+        annotations:
+          lineage.cozystack.io/ignore: "true"
+          external-dns.alpha.kubernetes.io/target: ${CLOUDFLARE_TUNNEL_TARGET}
+          external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+          external-dns.alpha.kubernetes.io/hostname: coder.${DOMAIN}
+          nginx.ingress.kubernetes.io/proxy-body-size: "0"
+          nginx.ingress.kubernetes.io/proxy-buffering: "off"
+          nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+          nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+        tls:
+          enable: true
+          secretName: wildcard-le-tls-cert
+      resources:
+        requests: { cpu: 250m, memory: 512Mi }
+        limits: { cpu: "2", memory: 2Gi }

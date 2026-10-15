@@ -40,8 +40,11 @@ spec:
   template:
     includedNamespaces:
       - 3d-print
+      - ai-gateway
       - ai-automation
       - atuin
+      - coder
+      - coder-workspaces
       - media
       - nextcloud
       - peanut

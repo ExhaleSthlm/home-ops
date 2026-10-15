@@ -37,6 +37,38 @@ apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
 metadata:
   name: postgres-backups
+  namespace: ai-gateway
+spec:
+  retentionPolicy: 30d
+  instanceSidecarConfiguration:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+    env:
+      - name: AWS_REQUEST_CHECKSUM_CALCULATION
+        value: when_required
+  configuration:
+    destinationPath: s3://postgres-backups/ai-gateway/
+    endpointURL: ${GARAGE_ENDPOINT}
+    s3Credentials:
+      accessKeyId:
+        name: postgres-backup-credentials
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: postgres-backup-credentials
+        key: ACCESS_SECRET_KEY
+    data:
+      compression: gzip
+    wal:
+      compression: gzip
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: postgres-backups
   namespace: ai-automation
 spec:
   retentionPolicy: 30d
@@ -116,6 +148,38 @@ spec:
         value: when_required
   configuration:
     destinationPath: s3://postgres-backups/blocky/
+    endpointURL: ${GARAGE_ENDPOINT}
+    s3Credentials:
+      accessKeyId:
+        name: postgres-backup-credentials
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: postgres-backup-credentials
+        key: ACCESS_SECRET_KEY
+    data:
+      compression: gzip
+    wal:
+      compression: gzip
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: postgres-backups
+  namespace: coder
+spec:
+  retentionPolicy: 30d
+  instanceSidecarConfiguration:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+    env:
+      - name: AWS_REQUEST_CHECKSUM_CALCULATION
+        value: when_required
+  configuration:
+    destinationPath: s3://postgres-backups/coder/
     endpointURL: ${GARAGE_ENDPOINT}
     s3Credentials:
       accessKeyId:
@@ -242,6 +306,20 @@ spec:
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
 metadata:
+  name: litellm-db
+  namespace: ai-gateway
+spec:
+  schedule: "0 5 2 * * *"
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  cluster:
+    name: litellm-db
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
   name: ai-automation
   namespace: ai-automation
 spec:
@@ -280,6 +358,20 @@ spec:
     name: barman-cloud.cloudnative-pg.io
   cluster:
     name: blocky-db
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: coder-db
+  namespace: coder
+spec:
+  schedule: "0 35 2 * * *"
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  cluster:
+    name: coder-db
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup

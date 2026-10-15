@@ -1,0 +1,149 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config-file
+  namespace: ai-gateway
+data:
+  config.yaml: |
+    model_list:
+      - model_name: local-fast
+        litellm_params:
+          model: ollama/qwen3:1.7b
+          api_base: http://ollama-fast.ai-automation.svc.cozy.local:11434
+          extra_body:
+            think: false
+      - model_name: local-default
+        litellm_params:
+          model: ollama/nemotron-3-nano:4b
+          api_base: http://ollama-default.ai-automation.svc.cozy.local:11434
+      - model_name: general-fast
+        litellm_params:
+          model: openrouter/google/gemini-2.5-flash-lite
+          api_key: os.environ/OPENROUTER_API_KEY
+      - model_name: code-fast
+        litellm_params:
+          model: openrouter/openai/gpt-5.1-codex-mini
+          api_key: os.environ/OPENROUTER_API_KEY
+
+    general_settings:
+      master_key: os.environ/LITELLM_MASTER_KEY
+      database_url: os.environ/DATABASE_URL
+      disable_spend_logs: false
+
+    router_settings:
+      routing_strategy: simple-shuffle
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: es-litellm-config
+  namespace: ai-gateway
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: infisical
+  target:
+    name: litellm-config
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      metadata:
+        labels:
+          reloader.stakater.com/auto: "true"
+  data:
+    - secretKey: LITELLM_MASTER_KEY
+      remoteRef:
+        key: /AI_GATEWAY/LITELLM_MASTER_KEY
+    - secretKey: OPENROUTER_API_KEY
+      remoteRef:
+        key: /AI_GATEWAY/OPENROUTER_API_KEY
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: litellm
+  namespace: ai-gateway
+  annotations:
+    lineage.cozystack.io/ignore: "true"
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+    namespace: cozy-fluxcd
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      litellm:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/berriai/litellm
+              tag: v1.83.14-stable@sha256:c81eb79cd4333c6cfe374c0ec929110fd23f0ee5f7fd198855a6fbddc77b83ba
+              pullPolicy: IfNotPresent
+            command: [litellm]
+            args: [--config, /app/config.yaml, --host, 0.0.0.0, --port, "4000", --num_workers, "1"]
+            env:
+              TZ: ${TZ}
+            envFrom:
+              - secretRef:
+                  name: litellm-config
+              - secretRef:
+                  name: litellm-db-creds
+            ports:
+              - name: http
+                containerPort: 4000
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet: { path: /health/liveliness, port: http }
+                  initialDelaySeconds: 20
+                  periodSeconds: 15
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet: { path: /health/liveliness, port: http }
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 60
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities: { drop: ["ALL"] }
+            resources:
+              requests: { cpu: 200m, memory: 512Mi }
+              limits: { cpu: "2", memory: 2Gi }
+
+    service:
+      litellm:
+        controller: litellm
+        ports:
+          http:
+            port: 4000
+            targetPort: http
+
+    persistence:
+      config:
+        enabled: true
+        type: configMap
+        name: litellm-config-file
+        globalMounts:
+          - path: /app/config.yaml
+            subPath: config.yaml
+            readOnly: true
