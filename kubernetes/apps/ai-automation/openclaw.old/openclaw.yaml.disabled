@@ -1,3 +1,4 @@
+# Archived deployment. Rename the directory and file extension to .yaml to re-enable it.
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

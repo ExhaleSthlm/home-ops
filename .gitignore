@@ -7,6 +7,8 @@
 # Hide .old files and old directories.
 /old
 *.old
+!kubernetes/apps/ai-automation/openclaw.old/
+!kubernetes/apps/ai-automation/openclaw.old/openclaw.yaml.disabled
 
 # macOS system files
 .DS_Store
