@@ -16,6 +16,8 @@ spec:
       limits:
         memory: 1Gi
     env:
+      - name: AWS_DEFAULT_REGION
+        value: garage
       - name: AWS_REQUEST_CHECKSUM_CALCULATION
         value: when_required
   configuration:
@@ -48,6 +50,8 @@ spec:
       limits:
         memory: 1Gi
     env:
+      - name: AWS_DEFAULT_REGION
+        value: garage
       - name: AWS_REQUEST_CHECKSUM_CALCULATION
         value: when_required
   configuration:
@@ -80,6 +84,8 @@ spec:
       limits:
         memory: 1Gi
     env:
+      - name: AWS_DEFAULT_REGION
+        value: garage
       - name: AWS_REQUEST_CHECKSUM_CALCULATION
         value: when_required
   configuration:
@@ -112,6 +118,8 @@ spec:
       limits:
         memory: 1Gi
     env:
+      - name: AWS_DEFAULT_REGION
+        value: garage
       - name: AWS_REQUEST_CHECKSUM_CALCULATION
         value: when_required
   configuration:
@@ -144,6 +152,8 @@ spec:
       limits:
         memory: 1Gi
     env:
+      - name: AWS_DEFAULT_REGION
+        value: garage
       - name: AWS_REQUEST_CHECKSUM_CALCULATION
         value: when_required
   configuration:
@@ -176,6 +186,8 @@ spec:
       limits:
         memory: 1Gi
     env:
+      - name: AWS_DEFAULT_REGION
+        value: garage
       - name: AWS_REQUEST_CHECKSUM_CALCULATION
         value: when_required
   configuration:
@@ -208,6 +220,8 @@ spec:
       limits:
         memory: 1Gi
     env:
+      - name: AWS_DEFAULT_REGION
+        value: garage
       - name: AWS_REQUEST_CHECKSUM_CALCULATION
         value: when_required
   configuration:
@@ -240,6 +254,8 @@ spec:
       limits:
         memory: 1Gi
     env:
+      - name: AWS_DEFAULT_REGION
+        value: garage
       - name: AWS_REQUEST_CHECKSUM_CALCULATION
         value: when_required
   configuration:
@@ -272,6 +288,8 @@ spec:
       limits:
         memory: 1Gi
     env:
+      - name: AWS_DEFAULT_REGION
+        value: garage
       - name: AWS_REQUEST_CHECKSUM_CALCULATION
         value: when_required
   configuration:
