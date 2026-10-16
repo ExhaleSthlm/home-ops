@@ -74,6 +74,9 @@ kind: Cluster
 metadata:
   name: coder-db
   namespace: coder
+  annotations:
+    # Work around plugin-barman-cloud failing archive checks after a verified failover.
+    cnpg.io/skipEmptyWalArchiveCheck: enabled
 spec:
   instances: 2
   plugins:
