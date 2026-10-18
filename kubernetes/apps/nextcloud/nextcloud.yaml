@@ -158,7 +158,7 @@ spec:
   chart:
     spec:
       chart: nextcloud
-      version: 9.4.0
+      version: 9.4.1
       reconcileStrategy: ChartVersion
       sourceRef:
         kind: HelmRepository
