@@ -17,7 +17,7 @@ nginx.ingress.kubernetes.io/auth-snippet: |
   proxy_set_header X-Original-Method $request_method;
 ```
 
-## Service DNS (PowerDNS)
+## Service DNS (Technitium)
 
 ```yaml
 external-dns.alpha.kubernetes.io/internal: "true"

@@ -86,7 +86,7 @@ spec:
     requests:
       storage: 10Gi
 ---
-# Technitium DNS (authoritative + recursive + blocklists) in parallel with PowerDNS/Blocky.
+# Technitium DNS provides authoritative DNS for internal zones; Blocky remains the client-facing resolver.
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:

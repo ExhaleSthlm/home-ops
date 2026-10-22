@@ -1,6 +1,6 @@
 ---
 name: flux-app-deploy-home-ops
-description: Deploy and maintain applications in this home-ops cluster using Flux GitOps patterns. Use when creating or updating app manifests under kubernetes/apps, adding namespace prerequisites in kubernetes/bootstrap, wiring BJW app-template HelmReleases, CloudNativePG databases, Reflector wildcard TLS replication, ExternalDNS records for both internal PowerDNS and Cloudflare tunnel ingress, and validating Flux-compatible YAML before commit.
+description: Deploy and maintain applications in this home-ops cluster using Flux GitOps patterns. Use when creating or updating app manifests under kubernetes/apps, adding namespace prerequisites in kubernetes/bootstrap, wiring BJW app-template HelmReleases, CloudNativePG databases, Reflector wildcard TLS replication, ExternalDNS records for both internal Technitium DNS and Cloudflare tunnel ingress, and validating Flux-compatible YAML before commit.
 ---
 
 # Flux App Deploy Home Ops
@@ -23,7 +23,7 @@ Follow this workflow to add a new application in this repository without breakin
 ## Repository Conventions
 - Use namespace label `ingress.svc.egress: allow` for apps exposed via ingress.
 - Keep image tags pinned as `version@sha256:digest`.
-- For internal DNS (PowerDNS via external-dns-local), annotate Services with:
+- For internal DNS (Technitium via external-dns-technitium), annotate Services with:
   - `external-dns.alpha.kubernetes.io/internal: "true"`
   - `external-dns.alpha.kubernetes.io/hostname: "<app>.${DOMAIN}"`
   - `external-dns.alpha.kubernetes.io/target: "cluster-ingress.${DOMAIN}"`
