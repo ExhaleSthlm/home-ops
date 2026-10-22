@@ -293,6 +293,8 @@ spec:
         enabled: true
         type: persistentVolumeClaim
         existingClaim: technitium-dns
+        globalMounts:
+          - path: /etc/dns
       tls-cert:
         type: secret
         name: wildcard-le-tls-cert

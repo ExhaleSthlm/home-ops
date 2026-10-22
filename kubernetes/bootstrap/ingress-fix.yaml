@@ -35,6 +35,9 @@ spec:
           loadBalancerIP: 192.168.222.103
           annotations:
             metallb.io/address-pool: cozystack
+            external-dns.alpha.kubernetes.io/hostname: cluster-ingress.${DOMAIN}
+            external-dns.alpha.kubernetes.io/target: 192.168.222.103
+            external-dns.alpha.kubernetes.io/technitium: "true"
         extraArgs:
           default-ssl-certificate: tenant-root/wildcard-le-tls-cert
 ---
