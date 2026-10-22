@@ -245,10 +245,11 @@ spec:
           $s3_secret = getenv('S3_SECRET_KEY');
           $s3_hostname = getenv('S3_HOSTNAME');
 
-          // Parse hostname to extract host and port
-          $parts = explode(':', $s3_hostname);
-          $s3_host = $parts[0];
-          $s3_port = isset($parts[1]) ? (int)$parts[1] : 9000;
+          // GARAGE/ENDPOINT is a full URL, for example http://host:port.
+          $s3_url = parse_url($s3_hostname);
+          $s3_host = $s3_url['host'];
+          $s3_use_ssl = ($s3_url['scheme'] ?? 'http') === 'https';
+          $s3_port = $s3_url['port'] ?? ($s3_use_ssl ? 443 : 80);
 
           $CONFIG = array (
             // S3/Minio Primary Storage
@@ -261,7 +262,7 @@ spec:
                 'secret' => $s3_secret,
                 'hostname' => $s3_host,
                 'port' => $s3_port,
-                'use_ssl' => false,
+                'use_ssl' => $s3_use_ssl,
                 'region' => 'us-east-1',
                 'use_path_style' => true
               ),
