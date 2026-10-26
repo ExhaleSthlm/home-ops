@@ -288,7 +288,11 @@ spec:
     controllers:
       wyoming-kokoro-sv:
         strategy: Recreate
+        annotations:
+          configmap.reloader.stakater.com/reload: wyoming-kokoro-sv
         pod:
+          labels:
+            home-ops.myk8s.se/config-revision: "2"
           securityContext:
             fsGroup: 1000
             fsGroupChangePolicy: OnRootMismatch
