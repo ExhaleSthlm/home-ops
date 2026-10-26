@@ -362,6 +362,17 @@ spec:
               - sh
               - -ec
               - |
+                if [ ! -x /data/espeak/bin/espeak-ng ]; then
+                  apt-get update
+                  apt-get install --no-install-recommends -y espeak-ng
+                  install -d /data/espeak/bin /data/espeak/lib
+                  cp /usr/bin/espeak-ng /data/espeak/bin/
+                  ldd /usr/bin/espeak-ng \
+                    | awk '/=> \/.*\.so/{print $3}' \
+                    | xargs -I '{}' cp -L '{}' /data/espeak/lib/
+                  cp -a /usr/lib/x86_64-linux-gnu/espeak-ng-data /data/espeak/
+                  rm -rf /var/lib/apt/lists/*
+                fi
                 marker=/data/venv/.pykokoro-0.10.6-onnxvoice-0.2.2-wyoming-1.10.2-openvino1
                 if [ ! -f "$marker" ]; then
                   python -m venv --clear /data/venv
@@ -386,7 +397,10 @@ spec:
               - /app/server.py
             env:
               TZ: ${TZ}
+              ESPEAK_DATA_PATH: /data/espeak
+              ESPEAKNG_RUNTIME_EXECUTABLE: /data/espeak/bin/espeak-ng
               KOKORO_SV_DEFAULT_VOICE: Stina
+              LD_LIBRARY_PATH: /data/espeak/lib
               XDG_CACHE_HOME: /data/cache
             securityContext:
               runAsNonRoot: true
