@@ -1,0 +1,454 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wyoming-kokoro-sv-openvino
+  namespace: home-automation
+data:
+  server.py: |
+    import asyncio
+    import json
+    import logging
+    import os
+    import re
+    import time
+    from functools import partial
+
+    import numpy as np
+    import onnxruntime as ort
+    from pykokoro import GenerationConfig, KokoroSynthesizer, SynthesisConfig
+    from wyoming.audio import AudioChunk, AudioStart, AudioStop
+    from wyoming.error import Error
+    from wyoming.event import Event
+    from wyoming.info import Attribution, Describe, Info, TtsProgram, TtsVoice
+    from wyoming.server import AsyncEventHandler, AsyncServer
+    from wyoming.tts import (
+        Synthesize,
+        SynthesizeChunk,
+        SynthesizeStart,
+        SynthesizeStop,
+        SynthesizeStopped,
+    )
+
+    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+    LOGGER = logging.getLogger("wyoming-kokoro-sv-openvino")
+    DEFAULT_VOICE = os.getenv("KOKORO_SV_DEFAULT_VOICE", "Stina")
+    SAMPLE_RATE = 24000
+    MAX_SEGMENT_CHARS = 240
+    SYNTHESIS_LOCK = asyncio.Lock()
+    VOICES = (
+        "Alice",
+        "Anton",
+        "Björn",
+        "Ebba",
+        "Elsa",
+        "Greta",
+        "Lars",
+        "Nils",
+        "Oskar",
+        "Stina",
+    )
+
+
+    def trim_edge_silence(audio):
+        samples = np.asarray(audio, dtype=np.float32).reshape(-1)
+        active = np.flatnonzero(np.abs(samples) > 0.01)
+        if not active.size:
+            return samples
+
+        leading_padding = int(SAMPLE_RATE * 0.08)
+        trailing_padding = int(SAMPLE_RATE * 0.22)
+        start = max(0, int(active[0]) - leading_padding)
+        end = min(len(samples), int(active[-1]) + 1 + trailing_padding)
+        return samples[start:end]
+
+
+    def split_all_segments(text):
+        remaining = " ".join(text.strip().splitlines())
+        segments = []
+        while remaining:
+            if len(remaining) <= MAX_SEGMENT_CHARS:
+                segments.append(remaining)
+                break
+
+            end = remaining.rfind(" ", 0, MAX_SEGMENT_CHARS + 1)
+            if end <= 0:
+                end = MAX_SEGMENT_CHARS
+            segments.append(remaining[:end])
+            remaining = remaining[end:].lstrip()
+
+        return segments
+
+
+    def split_complete_segments(text):
+        segments = []
+        remaining = text.replace("\n", " ")
+        while remaining:
+            boundary = re.search(r"[.!?](?:\s+|$)", remaining)
+            if boundary:
+                end = boundary.start() + 1
+            elif len(remaining) > MAX_SEGMENT_CHARS:
+                end = remaining.rfind(" ", 0, MAX_SEGMENT_CHARS + 1)
+                if end <= 0:
+                    end = MAX_SEGMENT_CHARS
+            else:
+                break
+
+            segment = " ".join(remaining[:end].split())
+            remaining = remaining[end:].lstrip()
+            if segment:
+                segments.extend(split_all_segments(segment))
+
+        return segments, remaining
+
+
+    class KokoroEventHandler(AsyncEventHandler):
+        def __init__(self, tts, info, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.tts = tts
+            self.info = info
+            self.streaming = False
+            self.stream_buffer = ""
+            self.stream_voice = None
+            self.audio_started = False
+
+        async def handle_event(self, event: Event) -> bool:
+            try:
+                if Describe.is_type(event.type):
+                    await self.write_event(self.info.event())
+                    return True
+
+                if SynthesizeStart.is_type(event.type):
+                    request = SynthesizeStart.from_event(event)
+                    self.streaming = True
+                    self.stream_buffer = ""
+                    self.stream_voice = request.voice
+                    self.audio_started = False
+                    return True
+
+                if SynthesizeChunk.is_type(event.type):
+                    request = SynthesizeChunk.from_event(event)
+                    self.stream_buffer += request.text
+                    segments, self.stream_buffer = split_complete_segments(
+                        self.stream_buffer
+                    )
+                    await self.synthesize_segments(segments, self.stream_voice)
+                    return True
+
+                if Synthesize.is_type(event.type):
+                    request = Synthesize.from_event(event)
+                    if self.streaming:
+                        if not self.stream_buffer and not self.audio_started:
+                            self.stream_buffer = request.text
+                        if self.stream_voice is None:
+                            self.stream_voice = request.voice
+                        return True
+
+                    await self.synthesize_segments(
+                        split_all_segments(request.text), request.voice
+                    )
+                    await self.write_event(AudioStop().event())
+                    self.audio_started = False
+                    return True
+
+                if SynthesizeStop.is_type(event.type):
+                    await self.synthesize_segments(
+                        split_all_segments(self.stream_buffer), self.stream_voice
+                    )
+                    if self.audio_started:
+                        await self.write_event(AudioStop().event())
+                    await self.write_event(SynthesizeStopped().event())
+                    self.streaming = False
+                    self.stream_buffer = ""
+                    self.stream_voice = None
+                    self.audio_started = False
+                    return True
+
+                return True
+            except Exception as err:
+                LOGGER.exception("Kokoro-SV OpenVINO synthesis failed")
+                await self.write_event(
+                    Error(text=str(err), code=err.__class__.__name__).event()
+                )
+                return True
+
+        def resolve_voice(self, requested_voice):
+            voice = DEFAULT_VOICE
+            if requested_voice and requested_voice.name:
+                voice = requested_voice.name
+            if voice not in VOICES:
+                raise ValueError(f"Unknown voice: {voice}")
+            return voice
+
+        async def synthesize_segments(self, segments, requested_voice):
+            if not segments:
+                return
+
+            voice = self.resolve_voice(requested_voice)
+            if not self.audio_started:
+                await self.write_event(
+                    AudioStart(rate=SAMPLE_RATE, width=2, channels=1).event()
+                )
+                self.audio_started = True
+
+            for text in segments:
+                started = time.monotonic()
+                async with SYNTHESIS_LOCK:
+                    rendered = await asyncio.to_thread(
+                        self.tts.synthesize_text,
+                        text,
+                        language="sv",
+                        voice=voice,
+                    )
+                if rendered.sample_rate != SAMPLE_RATE:
+                    raise ValueError(
+                        f"Unexpected sample rate: {rendered.sample_rate}"
+                    )
+                audio = trim_edge_silence(rendered.audio)
+                pcm = (
+                    np.clip(audio, -1.0, 1.0) * 32767.0
+                ).astype("<i2").tobytes()
+                elapsed = time.monotonic() - started
+                LOGGER.info(
+                    "Synthesized voice=%s chars=%d audio=%.2fs elapsed=%.2fs",
+                    voice,
+                    len(text),
+                    len(pcm) / 2 / SAMPLE_RATE,
+                    elapsed,
+                )
+
+                for offset in range(0, len(pcm), 16384):
+                    await self.write_event(
+                        AudioChunk(
+                            audio=pcm[offset : offset + 16384],
+                            rate=SAMPLE_RATE,
+                            width=2,
+                            channels=1,
+                        ).event()
+                    )
+
+
+    def create_synthesizer():
+        openvino_config = {
+            "GPU": {
+                "PERFORMANCE_HINT": "LATENCY",
+                "NUM_STREAMS": "1",
+                "CACHE_DIR": "/data/openvino-cache",
+            }
+        }
+        config = SynthesisConfig(
+            voice=DEFAULT_VOICE,
+            generation=GenerationConfig(lang="sv"),
+            model_variant="sv-joakim",
+            model_source="github",
+            provider="openvino",
+            provider_options={
+                "openvino": {
+                    "device_type": "GPU",
+                    "load_config": json.dumps(openvino_config),
+                }
+            },
+            cache_dir="/data/pykokoro",
+            long_text_split="sentence",
+        )
+        return KokoroSynthesizer(config)
+
+
+    async def main():
+        LOGGER.info("ONNX Runtime providers: %s", ort.get_available_providers())
+        tts = await asyncio.to_thread(create_synthesizer)
+        warmup = await asyncio.to_thread(
+            tts.synthesize_text,
+            "Hej.",
+            language="sv",
+            voice=DEFAULT_VOICE,
+        )
+        LOGGER.info(
+            "OpenVINO GPU warmup complete: %.2fs audio at %d Hz",
+            len(warmup.audio) / warmup.sample_rate,
+            warmup.sample_rate,
+        )
+
+        attribution = Attribution(
+            name="Joakim Eriksson",
+            url="https://github.com/joakimeriksson/kokoro-sv",
+        )
+        info = Info(
+            tts=[
+                TtsProgram(
+                    name="kokoro-sv-openvino",
+                    description="Swedish Kokoro-82M ONNX voices on Intel GPU",
+                    attribution=attribution,
+                    installed=True,
+                    version="0.10.6",
+                    voices=[
+                        TtsVoice(
+                            name=voice,
+                            description=f"Kokoro-SV OpenVINO: {voice}",
+                            attribution=attribution,
+                            installed=True,
+                            version="0.10.6",
+                            languages=["sv"],
+                        )
+                        for voice in VOICES
+                    ],
+                    supports_synthesize_streaming=True,
+                )
+            ]
+        )
+        LOGGER.info("Available voices: %s", ", ".join(VOICES))
+
+        server = AsyncServer.from_uri("tcp://0.0.0.0:10200")
+        await server.run(partial(KokoroEventHandler, tts, info))
+
+
+    if __name__ == "__main__":
+        asyncio.run(main())
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wyoming-kokoro-sv-openvino-data
+  namespace: home-automation
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: wyoming-kokoro-sv-openvino
+  namespace: home-automation
+spec:
+  interval: 30m
+  timeout: 30m
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+    namespace: cozy-fluxcd
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      wyoming-kokoro-sv-openvino:
+        strategy: Recreate
+        annotations:
+          configmap.reloader.stakater.com/reload: wyoming-kokoro-sv-openvino
+        pod:
+          labels:
+            home-ops.myk8s.se/config-revision: "1"
+          securityContext:
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            supplementalGroups:
+              - 44 # video
+              - 107 # render
+        initContainers:
+          install:
+            image:
+              repository: docker.io/library/python
+              tag: 3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c
+            command:
+              - sh
+              - -ec
+              - |
+                marker=/data/venv/.pykokoro-0.10.6-onnxvoice-0.2.2-wyoming-1.10.2-openvino1
+                if [ ! -f "$marker" ]; then
+                  python -m venv --clear /data/venv
+                  /data/venv/bin/pip install --no-cache-dir \
+                    'pykokoro[openvino]==0.10.6' \
+                    'onnxvoice[openvino]==0.2.2' \
+                    'wyoming==1.10.2'
+                  touch "$marker"
+                fi
+                chown -R 1000:1000 /data
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              allowPrivilegeEscalation: false
+        containers:
+          app:
+            image:
+              repository: docker.io/library/python
+              tag: 3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c
+            command:
+              - /data/venv/bin/python
+              - /app/server.py
+            env:
+              TZ: ${TZ}
+              KOKORO_SV_DEFAULT_VOICE: Stina
+              XDG_CACHE_HOME: /data/cache
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1000
+              runAsGroup: 1000
+              allowPrivilegeEscalation: false
+            probes:
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 10200
+                  initialDelaySeconds: 10
+                  periodSeconds: 5
+                  failureThreshold: 240
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 10200
+                  periodSeconds: 10
+                  timeoutSeconds: 2
+                  failureThreshold: 6
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 10200
+                  periodSeconds: 5
+                  timeoutSeconds: 2
+                  failureThreshold: 12
+            resources:
+              requests:
+                cpu: 500m
+                memory: 1Gi
+                gpu.intel.com/i915: 1
+              limits:
+                cpu: 2
+                memory: 3Gi
+                gpu.intel.com/i915: 1
+    service:
+      app:
+        controller: wyoming-kokoro-sv-openvino
+        type: ClusterIP
+        ports:
+          wyoming:
+            port: 10200
+            protocol: TCP
+            targetPort: 10200
+    persistence:
+      data:
+        enabled: true
+        existingClaim: wyoming-kokoro-sv-openvino-data
+        globalMounts:
+          - path: /data
+      server:
+        type: configMap
+        name: wyoming-kokoro-sv-openvino
+        globalMounts:
+          - path: /app/server.py
+            subPath: server.py
+            readOnly: true
