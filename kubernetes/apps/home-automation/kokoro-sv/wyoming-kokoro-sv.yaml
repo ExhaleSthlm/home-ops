@@ -283,11 +283,7 @@ spec:
     service:
       app:
         controller: wyoming-kokoro-sv
-        type: LoadBalancer
-        annotations:
-          metallb.io/address-pool: cozystack
-        loadBalancerIP: 192.168.222.125
-        externalTrafficPolicy: Local
+        type: ClusterIP
         ports:
           wyoming:
             port: 10200
