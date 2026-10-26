@@ -211,9 +211,12 @@ spec:
               - sh
               - -ec
               - |
-                marker=/data/venv/.kokoro-sv-0.1.3-wyoming-1.10.2
+                marker=/data/venv/.kokoro-sv-0.1.3-wyoming-1.10.2-cpu1
                 if [ ! -f "$marker" ]; then
-                  python -m venv /data/venv
+                  python -m venv --clear /data/venv
+                  /data/venv/bin/pip install --no-cache-dir \
+                    'torch==2.14.1+cpu' \
+                    --index-url https://download.pytorch.org/whl/cpu
                   /data/venv/bin/pip install --no-cache-dir \
                     'kokoro-sv==0.1.3' \
                     'wyoming==1.10.2'
