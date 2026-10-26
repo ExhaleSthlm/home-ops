@@ -189,6 +189,7 @@ metadata:
   namespace: home-automation
 spec:
   interval: 30m
+  timeout: 20m
   chartRef:
     kind: OCIRepository
     name: app-template
