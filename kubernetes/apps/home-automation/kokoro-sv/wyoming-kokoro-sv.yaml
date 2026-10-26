@@ -1,0 +1,304 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wyoming-kokoro-sv
+  namespace: home-automation
+data:
+  server.py: |
+    import asyncio
+    import logging
+    import os
+    from functools import partial
+
+    import numpy as np
+    from kokoro_sv import SwedishKokoro
+    from wyoming.audio import AudioChunk, AudioStart, AudioStop
+    from wyoming.error import Error
+    from wyoming.event import Event
+    from wyoming.info import Attribution, Describe, Info, TtsProgram, TtsVoice
+    from wyoming.server import AsyncEventHandler, AsyncServer
+    from wyoming.tts import (
+        Synthesize,
+        SynthesizeChunk,
+        SynthesizeStart,
+        SynthesizeStop,
+        SynthesizeStopped,
+    )
+
+    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+    LOGGER = logging.getLogger("wyoming-kokoro-sv")
+    DEFAULT_VOICE = os.getenv("KOKORO_SV_DEFAULT_VOICE", "Stina")
+    SAMPLE_RATE = 24000
+    SYNTHESIS_LOCK = asyncio.Lock()
+
+
+    class KokoroEventHandler(AsyncEventHandler):
+        def __init__(self, tts, voices, info, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.tts = tts
+            self.voices = voices
+            self.info = info
+            self.streaming = False
+            self.stream_chunks = []
+            self.stream_voice = None
+
+        async def handle_event(self, event: Event) -> bool:
+            try:
+                if Describe.is_type(event.type):
+                    await self.write_event(self.info.event())
+                    return True
+
+                if SynthesizeStart.is_type(event.type):
+                    request = SynthesizeStart.from_event(event)
+                    self.streaming = True
+                    self.stream_chunks = []
+                    self.stream_voice = request.voice
+                    return True
+
+                if SynthesizeChunk.is_type(event.type):
+                    self.stream_chunks.append(SynthesizeChunk.from_event(event).text)
+                    return True
+
+                if Synthesize.is_type(event.type):
+                    request = Synthesize.from_event(event)
+                    if self.streaming:
+                        # Home Assistant sends this for compatibility after chunks.
+                        if not self.stream_chunks:
+                            self.stream_chunks.append(request.text)
+                        if self.stream_voice is None:
+                            self.stream_voice = request.voice
+                        return True
+
+                    await self.synthesize(request.text, request.voice)
+                    return True
+
+                if SynthesizeStop.is_type(event.type):
+                    text = "".join(self.stream_chunks)
+                    await self.synthesize(text, self.stream_voice)
+                    await self.write_event(SynthesizeStopped().event())
+                    self.streaming = False
+                    self.stream_chunks = []
+                    self.stream_voice = None
+                    return True
+
+                return True
+            except Exception as err:
+                LOGGER.exception("Kokoro-SV synthesis failed")
+                await self.write_event(
+                    Error(text=str(err), code=err.__class__.__name__).event()
+                )
+                return True
+
+        async def synthesize(self, text, requested_voice):
+            text = " ".join(text.strip().splitlines())
+            if not text:
+                raise ValueError("Text is required")
+
+            voice = DEFAULT_VOICE
+            if requested_voice and requested_voice.name:
+                voice = requested_voice.name
+            if voice not in self.voices:
+                raise ValueError(f"Unknown voice: {voice}")
+
+            LOGGER.info("Synthesizing with voice %s", voice)
+            async with SYNTHESIS_LOCK:
+                audio = await asyncio.to_thread(
+                    self.tts.synthesize, text, voice=voice, speed=1.0
+                )
+
+            pcm = (
+                np.clip(np.asarray(audio, dtype=np.float32), -1.0, 1.0)
+                * 32767.0
+            ).astype("<i2").tobytes()
+
+            await self.write_event(
+                AudioStart(rate=SAMPLE_RATE, width=2, channels=1).event()
+            )
+            for offset in range(0, len(pcm), 16384):
+                await self.write_event(
+                    AudioChunk(
+                        audio=pcm[offset : offset + 16384],
+                        rate=SAMPLE_RATE,
+                        width=2,
+                        channels=1,
+                    ).event()
+                )
+            await self.write_event(AudioStop().event())
+
+
+    async def main():
+        tts = await asyncio.to_thread(SwedishKokoro)
+        voices = tuple(tts.voices)
+        if DEFAULT_VOICE not in voices:
+            raise ValueError(f"Default voice {DEFAULT_VOICE} is unavailable")
+
+        attribution = Attribution(
+            name="Joakim Eriksson",
+            url="https://github.com/joakimeriksson/kokoro-sv",
+        )
+        info = Info(
+            tts=[
+                TtsProgram(
+                    name="kokoro-sv",
+                    description="Swedish Kokoro-82M voices",
+                    attribution=attribution,
+                    installed=True,
+                    version="0.1.3",
+                    voices=[
+                        TtsVoice(
+                            name=voice,
+                            description=f"Kokoro-SV: {voice}",
+                            attribution=attribution,
+                            installed=True,
+                            version="0.1.3",
+                            languages=["sv"],
+                        )
+                        for voice in voices
+                    ],
+                    supports_synthesize_streaming=True,
+                )
+            ]
+        )
+        LOGGER.info("Available voices: %s", ", ".join(voices))
+
+        server = AsyncServer.from_uri("tcp://0.0.0.0:10200")
+        await server.run(partial(KokoroEventHandler, tts, voices, info))
+
+
+    if __name__ == "__main__":
+        asyncio.run(main())
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wyoming-kokoro-sv-data
+  namespace: home-automation
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 15Gi
+  storageClassName: local
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: wyoming-kokoro-sv
+  namespace: home-automation
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+    namespace: cozy-fluxcd
+  values:
+    controllers:
+      wyoming-kokoro-sv:
+        strategy: Recreate
+        pod:
+          securityContext:
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+        initContainers:
+          install:
+            image:
+              repository: docker.io/library/python
+              tag: 3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c
+            command:
+              - sh
+              - -ec
+              - |
+                marker=/data/venv/.kokoro-sv-0.1.3-wyoming-1.10.2
+                if [ ! -f "$marker" ]; then
+                  python -m venv /data/venv
+                  /data/venv/bin/pip install --no-cache-dir \
+                    'kokoro-sv==0.1.3' \
+                    'wyoming==1.10.2'
+                  touch "$marker"
+                fi
+                chown -R 1000:1000 /data
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              allowPrivilegeEscalation: false
+        containers:
+          app:
+            image:
+              repository: docker.io/library/python
+              tag: 3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c
+            command:
+              - /data/venv/bin/python
+              - /app/server.py
+            env:
+              TZ: ${TZ}
+              HF_HOME: /data/huggingface
+              HF_HUB_DISABLE_TELEMETRY: "1"
+              KOKORO_SV_DEFAULT_VOICE: Stina
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1000
+              runAsGroup: 1000
+              allowPrivilegeEscalation: false
+            probes:
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 10200
+                  initialDelaySeconds: 10
+                  periodSeconds: 5
+                  failureThreshold: 180
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 10200
+                  periodSeconds: 10
+                  timeoutSeconds: 2
+                  failureThreshold: 6
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 10200
+                  periodSeconds: 5
+                  timeoutSeconds: 2
+                  failureThreshold: 12
+            resources:
+              requests:
+                cpu: 500m
+                memory: 2Gi
+              limits:
+                cpu: 4
+                memory: 6Gi
+    service:
+      app:
+        controller: wyoming-kokoro-sv
+        type: LoadBalancer
+        annotations:
+          metallb.io/address-pool: cozystack
+        loadBalancerIP: 192.168.222.125
+        externalTrafficPolicy: Local
+        ports:
+          wyoming:
+            port: 10200
+            protocol: TCP
+            targetPort: 10200
+    persistence:
+      data:
+        enabled: true
+        existingClaim: wyoming-kokoro-sv-data
+        globalMounts:
+          - path: /data
+      server:
+        type: configMap
+        name: wyoming-kokoro-sv
+        globalMounts:
+          - path: /app/server.py
+            subPath: server.py
+            readOnly: true
