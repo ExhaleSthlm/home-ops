@@ -9,6 +9,8 @@ data:
     import asyncio
     import logging
     import os
+    import re
+    import time
     from functools import partial
 
     import numpy as np
@@ -30,7 +32,47 @@ data:
     LOGGER = logging.getLogger("wyoming-kokoro-sv")
     DEFAULT_VOICE = os.getenv("KOKORO_SV_DEFAULT_VOICE", "Stina")
     SAMPLE_RATE = 24000
+    MAX_SEGMENT_CHARS = 240
     SYNTHESIS_LOCK = asyncio.Lock()
+
+
+    def split_all_segments(text):
+        remaining = " ".join(text.strip().splitlines())
+        segments = []
+        while remaining:
+            if len(remaining) <= MAX_SEGMENT_CHARS:
+                segments.append(remaining)
+                break
+
+            end = remaining.rfind(" ", 0, MAX_SEGMENT_CHARS + 1)
+            if end <= 0:
+                end = MAX_SEGMENT_CHARS
+            segments.append(remaining[:end])
+            remaining = remaining[end:].lstrip()
+
+        return segments
+
+
+    def split_complete_segments(text):
+        segments = []
+        remaining = text.replace("\n", " ")
+        while remaining:
+            boundary = re.search(r"[.!?](?:\s+|$)", remaining)
+            if boundary:
+                end = boundary.start() + 1
+            elif len(remaining) > MAX_SEGMENT_CHARS:
+                end = remaining.rfind(" ", 0, MAX_SEGMENT_CHARS + 1)
+                if end <= 0:
+                    end = MAX_SEGMENT_CHARS
+            else:
+                break
+
+            segment = " ".join(remaining[:end].split())
+            remaining = remaining[end:].lstrip()
+            if segment:
+                segments.extend(split_all_segments(segment))
+
+        return segments, remaining
 
 
     class KokoroEventHandler(AsyncEventHandler):
@@ -40,8 +82,9 @@ data:
             self.voices = voices
             self.info = info
             self.streaming = False
-            self.stream_chunks = []
+            self.stream_buffer = ""
             self.stream_voice = None
+            self.audio_started = False
 
         async def handle_event(self, event: Event) -> bool:
             try:
@@ -52,34 +95,48 @@ data:
                 if SynthesizeStart.is_type(event.type):
                     request = SynthesizeStart.from_event(event)
                     self.streaming = True
-                    self.stream_chunks = []
+                    self.stream_buffer = ""
                     self.stream_voice = request.voice
+                    self.audio_started = False
                     return True
 
                 if SynthesizeChunk.is_type(event.type):
-                    self.stream_chunks.append(SynthesizeChunk.from_event(event).text)
+                    request = SynthesizeChunk.from_event(event)
+                    self.stream_buffer += request.text
+                    segments, self.stream_buffer = split_complete_segments(
+                        self.stream_buffer
+                    )
+                    await self.synthesize_segments(segments, self.stream_voice)
                     return True
 
                 if Synthesize.is_type(event.type):
                     request = Synthesize.from_event(event)
                     if self.streaming:
                         # Home Assistant sends this for compatibility after chunks.
-                        if not self.stream_chunks:
-                            self.stream_chunks.append(request.text)
+                        if not self.stream_buffer and not self.audio_started:
+                            self.stream_buffer = request.text
                         if self.stream_voice is None:
                             self.stream_voice = request.voice
                         return True
 
-                    await self.synthesize(request.text, request.voice)
+                    await self.synthesize_segments(
+                        split_all_segments(request.text), request.voice
+                    )
+                    await self.write_event(AudioStop().event())
+                    self.audio_started = False
                     return True
 
                 if SynthesizeStop.is_type(event.type):
-                    text = "".join(self.stream_chunks)
-                    await self.synthesize(text, self.stream_voice)
+                    await self.synthesize_segments(
+                        split_all_segments(self.stream_buffer), self.stream_voice
+                    )
+                    if self.audio_started:
+                        await self.write_event(AudioStop().event())
                     await self.write_event(SynthesizeStopped().event())
                     self.streaming = False
-                    self.stream_chunks = []
+                    self.stream_buffer = ""
                     self.stream_voice = None
+                    self.audio_started = False
                     return True
 
                 return True
@@ -90,44 +147,63 @@ data:
                 )
                 return True
 
-        async def synthesize(self, text, requested_voice):
-            text = " ".join(text.strip().splitlines())
-            if not text:
-                raise ValueError("Text is required")
-
+        def resolve_voice(self, requested_voice):
             voice = DEFAULT_VOICE
             if requested_voice and requested_voice.name:
                 voice = requested_voice.name
             if voice not in self.voices:
                 raise ValueError(f"Unknown voice: {voice}")
+            return voice
 
-            LOGGER.info("Synthesizing with voice %s", voice)
-            async with SYNTHESIS_LOCK:
-                audio = await asyncio.to_thread(
-                    self.tts.synthesize, text, voice=voice, speed=1.0
-                )
+        async def synthesize_segments(self, segments, requested_voice):
+            if not segments:
+                return
 
-            pcm = (
-                np.clip(np.asarray(audio, dtype=np.float32), -1.0, 1.0)
-                * 32767.0
-            ).astype("<i2").tobytes()
-
-            await self.write_event(
-                AudioStart(rate=SAMPLE_RATE, width=2, channels=1).event()
-            )
-            for offset in range(0, len(pcm), 16384):
+            voice = self.resolve_voice(requested_voice)
+            if not self.audio_started:
                 await self.write_event(
-                    AudioChunk(
-                        audio=pcm[offset : offset + 16384],
-                        rate=SAMPLE_RATE,
-                        width=2,
-                        channels=1,
-                    ).event()
+                    AudioStart(rate=SAMPLE_RATE, width=2, channels=1).event()
                 )
-            await self.write_event(AudioStop().event())
+                self.audio_started = True
+
+            for text in segments:
+                started = time.monotonic()
+                async with SYNTHESIS_LOCK:
+                    audio = await asyncio.to_thread(
+                        self.tts.synthesize, text, voice=voice, speed=1.0
+                    )
+
+                pcm = (
+                    np.clip(np.asarray(audio, dtype=np.float32), -1.0, 1.0)
+                    * 32767.0
+                ).astype("<i2").tobytes()
+                elapsed = time.monotonic() - started
+                LOGGER.info(
+                    "Synthesized voice=%s chars=%d audio=%.2fs elapsed=%.2fs",
+                    voice,
+                    len(text),
+                    len(pcm) / 2 / SAMPLE_RATE,
+                    elapsed,
+                )
+
+                for offset in range(0, len(pcm), 16384):
+                    await self.write_event(
+                        AudioChunk(
+                            audio=pcm[offset : offset + 16384],
+                            rate=SAMPLE_RATE,
+                            width=2,
+                            channels=1,
+                        ).event()
+                    )
 
 
     async def main():
+        import torch
+
+        torch_threads = int(os.getenv("KOKORO_SV_THREADS", "6"))
+        torch.set_num_threads(torch_threads)
+        torch.set_num_interop_threads(1)
+        LOGGER.info("PyTorch threads: %d", torch_threads)
         tts = await asyncio.to_thread(SwedishKokoro)
         voices = tuple(tts.voices)
         if DEFAULT_VOICE not in voices:
@@ -240,6 +316,9 @@ spec:
               HF_HOME: /data/huggingface
               HF_HUB_DISABLE_TELEMETRY: "1"
               KOKORO_SV_DEFAULT_VOICE: Stina
+              KOKORO_SV_THREADS: "6"
+              OMP_NUM_THREADS: "6"
+              MKL_NUM_THREADS: "6"
             securityContext:
               runAsNonRoot: true
               runAsUser: 1000
@@ -275,10 +354,10 @@ spec:
                   failureThreshold: 12
             resources:
               requests:
-                cpu: 500m
+                cpu: 1
                 memory: 2Gi
               limits:
-                cpu: 4
+                cpu: 6
                 memory: 6Gi
     service:
       app:
