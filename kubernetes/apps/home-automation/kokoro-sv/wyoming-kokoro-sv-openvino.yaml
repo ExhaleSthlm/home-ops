@@ -12,6 +12,7 @@ data:
     import logging
     import os
     import re
+    import subprocess
     import time
     from functools import partial
     from pathlib import Path
@@ -279,6 +280,16 @@ data:
 
 
     def create_synthesizer():
+        clinfo = subprocess.run(
+            ["/data/intel/bin/clinfo", "-l"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        if "Device #0" not in clinfo.stdout:
+            raise RuntimeError(f"Intel OpenCL GPU unavailable: {clinfo.stdout}")
+        LOGGER.info("OpenCL devices:\n%s", clinfo.stdout.strip())
+
         model_dir = download_model_assets()
         openvino_config = {
             "GPU": {
@@ -428,6 +439,28 @@ spec:
                   cp -a /usr/lib/x86_64-linux-gnu/espeak-ng-data /data/espeak/
                   rm -rf /var/lib/apt/lists/*
                 fi
+                if [ ! -x /data/intel/bin/clinfo ]; then
+                  sed -i 's|http://|https://|g' /etc/apt/sources.list.d/debian.sources
+                  apt-get update
+                  apt-get install --no-install-recommends -y \
+                    clinfo \
+                    intel-opencl-icd \
+                    ocl-icd-libopencl1
+                  install -d \
+                    /data/intel/bin \
+                    /data/intel/etc/OpenCL/vendors \
+                    /data/intel/lib
+                  cp /usr/bin/clinfo /data/intel/bin/
+                  find /usr/lib/x86_64-linux-gnu -maxdepth 2 \
+                    \( -name 'libig*.so*' -o -name 'libOpenCL.so*' \) \
+                    -exec cp -L '{}' /data/intel/lib/ \;
+                  ldd /usr/bin/clinfo \
+                    | awk '/=> \/.*\.so/{print $3}' \
+                    | xargs -I '{}' cp -L '{}' /data/intel/lib/
+                  printf '%s\n' '/data/intel/lib/libigdrcl.so' \
+                    > /data/intel/etc/OpenCL/vendors/intel.icd
+                  rm -rf /var/lib/apt/lists/*
+                fi
                 marker=/data/venv/.pykokoro-0.10.6-onnxvoice-0.2.2-wyoming-1.10.2-openvino1
                 if [ ! -f "$marker" ]; then
                   python -m venv --clear /data/venv
@@ -455,7 +488,8 @@ spec:
               ESPEAK_DATA_PATH: /data/espeak
               ESPEAKNG_RUNTIME_EXECUTABLE: /data/espeak/bin/espeak-ng
               KOKORO_SV_DEFAULT_VOICE: Stina
-              LD_LIBRARY_PATH: /data/espeak/lib
+              LD_LIBRARY_PATH: /data/espeak/lib:/data/intel/lib
+              OCL_ICD_VENDORS: /data/intel/etc/OpenCL/vendors
               XDG_CACHE_HOME: /data/cache
             securityContext:
               runAsNonRoot: true
