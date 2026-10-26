@@ -7,12 +7,15 @@ metadata:
 data:
   server.py: |
     import asyncio
+    import hashlib
     import json
     import logging
     import os
     import re
     import time
     from functools import partial
+    from pathlib import Path
+    from urllib.request import urlopen
 
     import numpy as np
     import onnxruntime as ort
@@ -48,6 +51,21 @@ data:
         "Oskar",
         "Stina",
     )
+    MODEL_RELEASE_URL = (
+        "https://github.com/buchwandler/kokoro-onnx-models/releases/download/"
+        "model-files-swedish-v1.1-r2"
+    )
+    MODEL_ASSETS = {
+        "config-swedish-v1.1.json": (
+            "5abb01e2403b072bf03d04fde160443e209d7a0dad49a423be15196b9b43c17f"
+        ),
+        "kokoro-swedish-v1.1.onnx": (
+            "33b63b9606818e85da054735c8da1bb55c68decc5f28ceaff257a18b09b3d6e1"
+        ),
+        "voices-swedish-v1.1.npz": (
+            "7e6f98ad71ceca5b6eb187f1cde8c64af10614d42bed44004cf41f286979a526"
+        ),
+    }
 
 
     def trim_edge_silence(audio):
@@ -61,6 +79,38 @@ data:
         start = max(0, int(active[0]) - leading_padding)
         end = min(len(samples), int(active[-1]) + 1 + trailing_padding)
         return samples[start:end]
+
+
+    def sha256_file(path):
+        digest = hashlib.sha256()
+        with path.open("rb") as model_file:
+            while chunk := model_file.read(1024 * 1024):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+
+    def download_model_assets():
+        model_dir = Path("/data/models/sv-joakim-v1.1-r2")
+        model_dir.mkdir(parents=True, exist_ok=True)
+        for filename, expected_hash in MODEL_ASSETS.items():
+            target = model_dir / filename
+            if target.is_file() and sha256_file(target) == expected_hash:
+                continue
+
+            temporary = target.with_suffix(target.suffix + ".part")
+            LOGGER.info("Downloading model asset: %s", filename)
+            digest = hashlib.sha256()
+            with urlopen(f"{MODEL_RELEASE_URL}/{filename}") as response:
+                with temporary.open("wb") as output:
+                    while chunk := response.read(1024 * 1024):
+                        output.write(chunk)
+                        digest.update(chunk)
+            if digest.hexdigest() != expected_hash:
+                temporary.unlink(missing_ok=True)
+                raise ValueError(f"Checksum mismatch for {filename}")
+            temporary.replace(target)
+
+        return model_dir
 
 
     def split_all_segments(text):
@@ -229,6 +279,7 @@ data:
 
 
     def create_synthesizer():
+        model_dir = download_model_assets()
         openvino_config = {
             "GPU": {
                 "PERFORMANCE_HINT": "LATENCY",
@@ -241,6 +292,9 @@ data:
             generation=GenerationConfig(lang="sv"),
             model_variant="sv-joakim",
             model_source="github",
+            model_path=model_dir / "kokoro-swedish-v1.1.onnx",
+            voices_path=model_dir / "voices-swedish-v1.1.npz",
+            model_config_path=model_dir / "config-swedish-v1.1.json",
             provider="openvino",
             provider_options={
                 "openvino": {
@@ -363,6 +417,7 @@ spec:
               - -ec
               - |
                 if [ ! -x /data/espeak/bin/espeak-ng ]; then
+                  sed -i 's|http://|https://|g' /etc/apt/sources.list.d/debian.sources
                   apt-get update
                   apt-get install --no-install-recommends -y espeak-ng
                   install -d /data/espeak/bin /data/espeak/lib
