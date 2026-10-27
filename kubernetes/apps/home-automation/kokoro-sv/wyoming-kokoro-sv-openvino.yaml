@@ -439,13 +439,14 @@ spec:
                   cp -a /usr/lib/x86_64-linux-gnu/espeak-ng-data /data/espeak/
                   rm -rf /var/lib/apt/lists/*
                 fi
-                if [ ! -x /data/intel/bin/clinfo ]; then
+                if [ ! -f /data/intel/.opencl-runtime-v2 ]; then
                   sed -i 's|http://|https://|g' /etc/apt/sources.list.d/debian.sources
                   apt-get update
                   apt-get install --no-install-recommends -y \
                     clinfo \
                     intel-opencl-icd \
                     ocl-icd-libopencl1
+                  rm -rf /data/intel/bin /data/intel/etc /data/intel/lib
                   install -d \
                     /data/intel/bin \
                     /data/intel/etc/OpenCL/vendors \
@@ -457,8 +458,16 @@ spec:
                   ldd /usr/bin/clinfo \
                     | awk '/=> \/.*\.so/{print $3}' \
                     | xargs -I '{}' cp -L '{}' /data/intel/lib/
+                  for pass in 1 2 3; do
+                    for library in /data/intel/lib/*.so*; do
+                      LD_LIBRARY_PATH=/data/intel/lib ldd "$library" 2>/dev/null \
+                        | awk '/=> \/.*\.so/{print $3}' \
+                        | xargs -r -I '{}' cp -L '{}' /data/intel/lib/
+                    done
+                  done
                   printf '%s\n' '/data/intel/lib/libigdrcl.so' \
                     > /data/intel/etc/OpenCL/vendors/intel.icd
+                  touch /data/intel/.opencl-runtime-v2
                   rm -rf /var/lib/apt/lists/*
                 fi
                 marker=/data/venv/.pykokoro-0.10.6-onnxvoice-0.2.2-wyoming-1.10.2-openvino1
