@@ -277,6 +277,8 @@ kind: HelmRelease
 metadata:
   name: wyoming-kokoro-sv
   namespace: home-automation
+  labels:
+    sharding.fluxcd.io/key: shard0
 spec:
   interval: 30m
   timeout: 20m
