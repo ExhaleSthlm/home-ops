@@ -313,7 +313,7 @@ data:
             provider="openvino",
             provider_options={
                 "openvino": {
-                    "device_type": "GPU",
+                    "device_type": "HETERO:GPU,CPU",
                     "disable_dynamic_shapes": "True",
                     "load_config": json.dumps(openvino_config),
                 }
@@ -335,7 +335,7 @@ data:
             voice=DEFAULT_VOICE,
         )
         LOGGER.info(
-            "OpenVINO GPU warmup complete: %.2fs audio at %d Hz",
+            "OpenVINO heterogeneous GPU/CPU warmup complete: %.2fs audio at %d Hz",
             len(warmup.audio) / warmup.sample_rate,
             warmup.sample_rate,
         )
