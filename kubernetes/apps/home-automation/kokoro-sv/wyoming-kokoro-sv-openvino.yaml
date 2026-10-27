@@ -291,6 +291,10 @@ data:
         LOGGER.info("OpenCL devices:\n%s", clinfo.stdout.strip())
 
         model_dir = download_model_assets()
+        session_options = ort.SessionOptions()
+        session_options.graph_optimization_level = (
+            ort.GraphOptimizationLevel.ORT_DISABLE_ALL
+        )
         openvino_config = {
             "GPU": {
                 "PERFORMANCE_HINT": "LATENCY",
@@ -310,9 +314,11 @@ data:
             provider_options={
                 "openvino": {
                     "device_type": "GPU",
+                    "disable_dynamic_shapes": "True",
                     "load_config": json.dumps(openvino_config),
                 }
             },
+            session_options=session_options,
             cache_dir="/data/pykokoro",
             long_text_split="sentence",
         )
