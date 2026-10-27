@@ -318,7 +318,13 @@ spec:
     - secretKey: HOME_ASSISTANT_TOKEN
       remoteRef:
         key: /HERMES/HOME_ASSISTANT_TOKEN
+    - secretKey: HASS_TOKEN
+      remoteRef:
+        key: /HERMES/HOME_ASSISTANT_TOKEN
     - secretKey: HOME_ASSISTANT_URL
+      remoteRef:
+        key: /HERMES/HOME_ASSISTANT_URL
+    - secretKey: HASS_URL
       remoteRef:
         key: /HERMES/HOME_ASSISTANT_URL
     - secretKey: HERMES_DASHBOARD_OIDC_CLIENT_ID
