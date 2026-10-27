@@ -464,7 +464,12 @@ spec:
                     for library in /data/intel/lib/*.so*; do
                       ldd "$library" 2>/dev/null \
                         | awk '/=> \/.*\.so/{print $3}' \
-                        | xargs -r -I '{}' cp -L '{}' /data/intel/lib/
+                        | xargs -r -I '{}' sh -c '
+                            source="$1"
+                            target="/data/intel/lib/$(basename "$source")"
+                            [ "$(readlink -f "$source")" = "$(readlink -f "$target" 2>/dev/null)" ] \
+                              || cp -L "$source" "$target"
+                          ' sh '{}'
                     done
                   done
                   printf '%s\n' '/data/intel/lib/libigdrcl.so' \
