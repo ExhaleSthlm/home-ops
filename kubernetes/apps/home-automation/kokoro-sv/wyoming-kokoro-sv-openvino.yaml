@@ -462,7 +462,7 @@ spec:
                     | xargs -I '{}' cp -L '{}' /data/intel/lib/
                   for pass in 1 2 3; do
                     for library in /data/intel/lib/*.so*; do
-                      LD_LIBRARY_PATH=/data/intel/lib ldd "$library" 2>/dev/null \
+                      ldd "$library" 2>/dev/null \
                         | awk '/=> \/.*\.so/{print $3}' \
                         | xargs -r -I '{}' cp -L '{}' /data/intel/lib/
                     done
