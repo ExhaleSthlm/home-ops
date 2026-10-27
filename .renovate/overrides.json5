@@ -2,6 +2,16 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   packageRules: [
     {
+      description: "Keep Kokoro runtime on supported Python 3.12",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["docker.io/library/python"],
+      matchFileNames: [
+        "kubernetes/apps/home-automation/kokoro-sv/wyoming-kokoro-sv.yaml",
+        "kubernetes/apps/home-automation/kokoro-sv/wyoming-kokoro-sv-openvino.yaml",
+      ],
+      allowedVersions: "/^3\\.12\\./",
+    },
+    {
       description: "Override Helmfile Dependency Name",
       matchDatasources: ["docker"],
       matchManagers: ["helmfile"],
