@@ -41,18 +41,22 @@ metadata:
   name: hermes-agent-config-bootstrap
   namespace: ai-automation
 data:
-  ensure-custom-providers.py: |
+  ensure-hermes-config.py: |
+    from copy import deepcopy
+    import os
     from pathlib import Path
+    import tempfile
+
     import yaml
 
 
-    CONFIG_PATH = Path("/opt/data/config.yaml")
+    CONFIG_PATH = Path(os.getenv("HERMES_CONFIG_PATH", "/opt/data/config.yaml"))
 
-    WANTED = {
+    MANAGED_PROVIDERS = {
         "ollama-fast": {
             "name": "ollama-fast",
-            "base_url": "http://ollama-fast.ai-automation.svc.cozy.local:11434",
-            "model": "llama3.2:3b",
+            "api": "http://ollama-fast.ai-automation.svc.cozy.local:11434",
+            "default_model": "llama3.2:3b",
             "models": {
                 "llama3.2:3b": {"context_length": 131072},
                 "qwen3:1.7b": {"context_length": 40960},
@@ -60,14 +64,23 @@ data:
         },
         "ollama-default": {
             "name": "ollama-default",
-            "base_url": "http://ollama-default.ai-automation.svc.cozy.local:11434",
-            "model": "llama3.1:8b",
+            "api": "http://ollama-default.ai-automation.svc.cozy.local:11434",
+            "default_model": "llama3.1:8b",
             "models": {
                 "llama3.1:8b": {"context_length": 131072},
             },
         },
     }
-    AUXILIARY = {
+    MANAGED = {
+        "agent": {
+            "reasoning_effort": "low",
+        },
+        "security": {
+            "tirith_fail_open": False,
+        },
+    }
+    DEFAULTS = {
+        "auxiliary": {
         "compression": {
             "provider": "openrouter",
             "model": "google/gemini-2.5-flash-lite",
@@ -97,198 +110,189 @@ data:
             "timeout": 30,
         },
         "title_generation": {
-            "provider": "custom:ollama-fast",
+            "provider": "ollama-fast",
             "model": "llama3.2:3b",
             "base_url": "",
             "api_key": "",
             "timeout": 30,
         },
         "triage_specifier": {
-            "provider": "custom:ollama-fast",
+            "provider": "ollama-fast",
             "model": "llama3.2:3b",
             "base_url": "",
             "api_key": "",
             "timeout": 120,
         },
         "kanban_decomposer": {
-            "provider": "custom:ollama-fast",
+            "provider": "ollama-fast",
             "model": "llama3.2:3b",
             "base_url": "",
             "api_key": "",
             "timeout": 180,
         },
         "skills_hub": {
-            "provider": "custom:ollama-default",
+            "provider": "ollama-default",
             "model": "llama3.1:8b",
             "base_url": "",
             "api_key": "",
             "timeout": 30,
         },
         "profile_describer": {
-            "provider": "custom:ollama-default",
+            "provider": "ollama-default",
             "model": "llama3.1:8b",
             "base_url": "",
             "api_key": "",
             "timeout": 60,
         },
         "curator": {
-            "provider": "custom:ollama-default",
+            "provider": "ollama-default",
             "model": "llama3.1:8b",
             "base_url": "",
             "api_key": "",
             "timeout": 600,
         },
-    }
-
-    MOA_PRESET_NAME = "homelab-balanced"
-    MOA_PRESET = {
-        "enabled": True,
-        "reference_models": [
-            {
-                "provider": "custom:ollama-fast",
-                "model": "llama3.2:3b",
-            },
-            {
-                "provider": "openrouter",
-                "model": "google/gemini-2.5-flash-lite",
-            },
-        ],
-        "aggregator": {
-            "provider": "openrouter",
-            "model": "openai/gpt-5.1-codex-mini",
         },
-        "reference_temperature": None,
-        "aggregator_temperature": None,
-        "max_tokens": 4096,
-        "reference_max_tokens": 800,
-        "fanout": "user_turn",
+        "display": {
+            "personality": "helpful",
+        },
+        "sessions": {
+            "auto_prune": True,
+        },
+        "moa": {
+            "default_preset": "homelab-balanced",
+            "presets": {
+                "homelab-balanced": {
+                    "enabled": True,
+                    "reference_models": [
+                        {
+                            "provider": "ollama-fast",
+                            "model": "llama3.2:3b",
+                        },
+                        {
+                            "provider": "openrouter",
+                            "model": "google/gemini-2.5-flash-lite",
+                        },
+                    ],
+                    "aggregator": {
+                        "provider": "openrouter",
+                        "model": "openai/gpt-5.1-codex-mini",
+                    },
+                    "reference_temperature": None,
+                    "aggregator_temperature": None,
+                    "max_tokens": 4096,
+                    "reference_max_tokens": 800,
+                    "fanout": "user_turn",
+                },
+            },
+        },
     }
-    DISPLAY = {
-        "personality": "helpful",
-    }
-    SECURITY = {
-        "tirith_fail_open": False,
-    }
-    SESSIONS = {
-        "auto_prune": True,
+    LEGACY_PROVIDER_REFERENCES = {
+        "custom:ollama-fast": "ollama-fast",
+        "custom:ollama-default": "ollama-default",
     }
 
 
-    with CONFIG_PATH.open() as f:
-        config = yaml.safe_load(f) or {}
+    def deep_defaults(target, defaults):
+        for key, value in defaults.items():
+            if key not in target:
+                target[key] = deepcopy(value)
+            elif isinstance(target[key], dict) and isinstance(value, dict):
+                deep_defaults(target[key], value)
 
-    changed = False
 
-    if "toolsets" in config:
-        del config["toolsets"]
-        changed = True
+    def apply_managed(config):
+        providers = config.setdefault("providers", {})
+        if not isinstance(providers, dict):
+            providers = {}
+            config["providers"] = providers
 
-    providers = config.get("custom_providers")
-    if not isinstance(providers, list):
-        providers = []
+        for name, wanted in MANAGED_PROVIDERS.items():
+            provider = providers.get(name)
+            if not isinstance(provider, dict):
+                provider = {}
+                providers[name] = provider
 
-    by_name = {
-        str(entry.get("name", "")).strip(): entry
-        for entry in providers
-        if isinstance(entry, dict)
-    }
+            for key in ("name", "api", "default_model"):
+                provider[key] = wanted[key]
 
-    for name, wanted in WANTED.items():
-        existing = by_name.get(name)
-        if existing is None:
-            providers.append(wanted)
-            changed = True
-            continue
+            current_models = provider.get("models")
+            if not isinstance(current_models, dict):
+                current_models = {}
+            managed_models = {}
+            for model_name, model_settings in wanted["models"].items():
+                current = current_models.get(model_name)
+                if not isinstance(current, dict):
+                    current = {}
+                current.update(model_settings)
+                managed_models[model_name] = current
+            provider["models"] = managed_models
 
-        for key in ("name", "base_url", "model"):
-            if existing.get(key) != wanted[key]:
-                existing[key] = wanted[key]
-                changed = True
+        for section, values in MANAGED.items():
+            target = config.get(section)
+            if not isinstance(target, dict):
+                target = {}
+                config[section] = target
+            target.update(values)
 
-        models = existing.get("models")
-        if not isinstance(models, dict):
-            models = {}
 
-        for model_name, model_cfg in wanted["models"].items():
-            if models.get(model_name) != model_cfg:
-                models[model_name] = model_cfg
-                changed = True
+    def migrate_legacy_providers(config):
+        legacy = config.get("custom_providers")
+        if isinstance(legacy, list):
+            retained = [
+                entry for entry in legacy
+                if not isinstance(entry, dict)
+                or str(entry.get("name", "")).strip() not in MANAGED_PROVIDERS
+            ]
+            if retained:
+                config["custom_providers"] = retained
+            else:
+                config.pop("custom_providers", None)
 
-        existing["models"] = models
 
-    if changed:
-        config["custom_providers"] = providers
+    def migrate_references(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                value[key] = migrate_references(item)
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                value[index] = migrate_references(item)
+        elif isinstance(value, str):
+            return LEGACY_PROVIDER_REFERENCES.get(value, value)
+        return value
 
-    auxiliary = config.get("auxiliary")
-    if not isinstance(auxiliary, dict):
-        auxiliary = {}
 
-    for slot, wanted in AUXILIARY.items():
-        current = auxiliary.get(slot)
-        if not isinstance(current, dict):
-            auxiliary[slot] = dict(wanted)
-            changed = True
-            continue
-        for key, value in wanted.items():
-            if current.get(key) != value:
-                current[key] = value
-                changed = True
+    def atomic_write(config):
+        stat = CONFIG_PATH.stat()
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            dir=CONFIG_PATH.parent,
+            prefix=f".{CONFIG_PATH.name}.",
+            delete=False,
+        ) as temporary:
+            yaml.safe_dump(config, temporary, sort_keys=False, allow_unicode=False)
+            temporary.flush()
+            os.fsync(temporary.fileno())
+            temporary_path = Path(temporary.name)
 
-    display = config.get("display")
-    if not isinstance(display, dict):
-        display = {}
-    for key, value in DISPLAY.items():
-        if display.get(key) != value:
-            display[key] = value
-            changed = True
+        os.chmod(temporary_path, stat.st_mode)
+        os.chown(temporary_path, stat.st_uid, stat.st_gid)
+        os.replace(temporary_path, CONFIG_PATH)
 
-    security = config.get("security")
-    if not isinstance(security, dict):
-        security = {}
-    for key, value in SECURITY.items():
-        if security.get(key) != value:
-            security[key] = value
-            changed = True
 
-    sessions = config.get("sessions")
-    if not isinstance(sessions, dict):
-        sessions = {}
-    for key, value in SESSIONS.items():
-        if sessions.get(key) != value:
-            sessions[key] = value
-            changed = True
+    with CONFIG_PATH.open() as config_file:
+        config = yaml.safe_load(config_file) or {}
+    if not isinstance(config, dict):
+        raise TypeError(f"Hermes config must be a mapping: {CONFIG_PATH}")
 
-    moa = config.get("moa")
-    if not isinstance(moa, dict):
-        moa = {}
+    original = deepcopy(config)
+    apply_managed(config)
+    deep_defaults(config, DEFAULTS)
+    migrate_legacy_providers(config)
+    migrate_references(config)
 
-    presets = moa.get("presets")
-    if not isinstance(presets, dict):
-        presets = {}
-
-    current_preset = presets.get(MOA_PRESET_NAME)
-    if current_preset != MOA_PRESET:
-        presets[MOA_PRESET_NAME] = dict(MOA_PRESET)
-        changed = True
-
-    if moa.get("default_preset") != MOA_PRESET_NAME:
-        moa["default_preset"] = MOA_PRESET_NAME
-        changed = True
-
-    if moa.get("presets") != presets:
-        moa["presets"] = presets
-        changed = True
-
-    if changed:
-        config["custom_providers"] = providers
-        config["auxiliary"] = auxiliary
-        config["display"] = display
-        config["security"] = security
-        config["sessions"] = sessions
-        config["moa"] = moa
-        with CONFIG_PATH.open("w") as f:
-            yaml.safe_dump(config, f, sort_keys=False, allow_unicode=False)
-        print("updated Hermes config bootstrap state")
+    if config != original:
+        atomic_write(config)
+        print("updated Hermes hybrid bootstrap state")
     else:
         print("Hermes config already up to date")
 ---
@@ -333,6 +337,8 @@ kind: HelmRelease
 metadata:
   name: hermes-agent
   namespace: ai-automation
+  labels:
+    sharding.fluxcd.io/key: shard0
   annotations:
     lineage.cozystack.io/ignore: "true"
 spec:
@@ -363,8 +369,13 @@ spec:
               tag: v2026.8.16.2@sha256:00a3150dc11dbb3293ed524d1f905c84d3d0c934725125e0b29abe196288fa98
               pullPolicy: IfNotPresent
             command:
-              - /opt/hermes/.venv/bin/python
-              - /opt/hermes-bootstrap/ensure-custom-providers.py
+              - /bin/sh
+              - -ec
+            args:
+              - |
+                /opt/hermes/.venv/bin/hermes config migrate
+                /opt/hermes/.venv/bin/python /opt/hermes-bootstrap/ensure-hermes-config.py
+                /opt/hermes/.venv/bin/hermes config check
             securityContext:
               runAsUser: 0
               runAsGroup: 0
@@ -432,8 +443,8 @@ spec:
         type: configMap
         name: hermes-agent-config-bootstrap
         globalMounts:
-          - path: /opt/hermes-bootstrap/ensure-custom-providers.py
-            subPath: ensure-custom-providers.py
+          - path: /opt/hermes-bootstrap/ensure-hermes-config.py
+            subPath: ensure-hermes-config.py
             readOnly: true
 
     service:
