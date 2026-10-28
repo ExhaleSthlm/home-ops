@@ -12,7 +12,7 @@ spec:
   chart:
     spec:
       chart: coder
-      version: 2.38.2
+      version: 2.38.3
       reconcileStrategy: ChartVersion
       sourceRef:
         kind: HelmRepository
