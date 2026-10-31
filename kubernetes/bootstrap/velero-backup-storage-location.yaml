@@ -111,4 +111,5 @@ spec:
     snapshotVolumes: true
     snapshotMoveData: true
     ttl: 720h
+    csiSnapshotTimeout: 1h
     itemOperationTimeout: 24h
