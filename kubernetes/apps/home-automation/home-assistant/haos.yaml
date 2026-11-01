@@ -20,6 +20,28 @@ spec:
       - ReadWriteOnce
     volumeMode: Filesystem
 ---
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: haos-rootdisk-replicated
+  namespace: home-automation
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/component: storage
+spec:
+  source:
+    pvc:
+      namespace: home-automation
+      name: haos-rootdisk
+  storage:
+    resources:
+      requests:
+        storage: 72Gi
+    storageClassName: replicated
+    accessModes:
+      - ReadWriteOnce
+    volumeMode: Filesystem
+---
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
@@ -40,8 +62,16 @@ spec:
         app.kubernetes.io/part-of: home-automation
     spec:
       architecture: amd64
-      nodeSelector:
-        kubernetes.io/hostname: k8s02
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - k8s01
+                      - k8s02
       domain:
         machine:
           type: q35
@@ -67,6 +97,7 @@ spec:
                   port: 8123
             - name: iotvlan
               bridge: {}
+              macAddress: 0a:bd:21:b6:86:ac
           disks:
             - name: rootdisk
               bootOrder: 1
@@ -84,7 +115,7 @@ spec:
       volumes:
         - name: rootdisk
           dataVolume:
-            name: haos-rootdisk
+            name: haos-rootdisk-replicated
         - name: cloudinitdisk
           cloudInitNoCloud:
             userData: |
