@@ -270,7 +270,7 @@ resource "kubernetes_deployment_v1" "workspace" {
 
         container {
           name              = "coder-agent"
-          image             = "codercom/enterprise-base:ubuntu@sha256:96a11110dd1ad7ec8dfc385b66e90eeac7096ce6c28aab2865d2a0b11f71e8d4"
+          image             = "codercom/enterprise-base:ubuntu@sha256:9ba011f0d1fdefc202ba7c8634b59fd65120f847665bf03552c50eac12aa3e5e"
           image_pull_policy = "IfNotPresent"
           command           = ["sh", "-c", coder_agent.main.init_script]
 
