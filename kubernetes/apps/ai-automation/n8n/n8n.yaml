@@ -95,7 +95,7 @@ spec:
     image:
       repository: n8nio/n8n
       pullPolicy: IfNotPresent
-      tag: 3.2.0@sha256:9e67c2627d3c30dbb0d51f5da83d4499ac7913f6b4f358a900a58026a832ba12
+      tag: 3.2.2@sha256:c5d94cb443ff3d7b3abd65927fd8c9af1281f026ebfed9b208cf8d0f6b199a94
 
     main:
       # All non secret configuration for n8n goes here...
