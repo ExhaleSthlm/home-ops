@@ -146,6 +146,7 @@ spec:
               cnpg.io/cluster: coder-db
       ports:
         - { protocol: TCP, port: 5432 }
+        - { protocol: TCP, port: 8000 }
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
