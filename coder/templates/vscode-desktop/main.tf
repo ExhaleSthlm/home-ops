@@ -201,7 +201,7 @@ resource "kubernetes_deployment_v1" "workspace" {
 
         container {
           name              = "desktop"
-          image             = "lscr.io/linuxserver/vscode:latest@sha256:c406f30cdb040e11a73f50268c2021ab27a5b01fb64bfc302d383d170f6a2629"
+          image             = "lscr.io/linuxserver/vscode:latest@sha256:ffe5847c1af984f9226d4f37652bd8d8c27de867b1ae1c6a8c2b5295ddd80b73"
           image_pull_policy = "IfNotPresent"
 
           env {
