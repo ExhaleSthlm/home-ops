@@ -302,7 +302,7 @@ spec:
           install:
             image:
               repository: docker.io/library/python
-              tag: 3.12.16-slim-bookworm@sha256:82836454a795d9d75549a9e157fd08dbac6c383292cf89e99f4248a97ce6b2ff
+              tag: 3.12.16-slim-bookworm@sha256:44cf1793efa7c7a476bb0f2cff81443f4a072c90c1cb127e2924933daa3e8c64
             command:
               - sh
               - -ec
@@ -327,7 +327,7 @@ spec:
           app:
             image:
               repository: docker.io/library/python
-              tag: 3.12.16-slim-bookworm@sha256:82836454a795d9d75549a9e157fd08dbac6c383292cf89e99f4248a97ce6b2ff
+              tag: 3.12.16-slim-bookworm@sha256:44cf1793efa7c7a476bb0f2cff81443f4a072c90c1cb127e2924933daa3e8c64
             command:
               - /data/venv/bin/python
               - /app/server.py
