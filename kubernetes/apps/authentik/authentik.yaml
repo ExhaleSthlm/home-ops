@@ -202,7 +202,7 @@ spec:
   chart:
     spec:
       chart: authentik
-      version: 2026.8.6
+      version: 2026.8.7
       reconcileStrategy: ChartVersion
       sourceRef:
         kind: HelmRepository
